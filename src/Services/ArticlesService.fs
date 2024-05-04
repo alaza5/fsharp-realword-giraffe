@@ -2,6 +2,7 @@ namespace ArticlesService
 
 module ArticlesService =
   open Giraffe
+  open Giraffe.Core
   open Microsoft.AspNetCore.Http
   open Models
 
@@ -15,6 +16,8 @@ module ArticlesService =
   let postCreateArticle (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
 
   let putUpdateArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
+    printfn $">> slug {slug}"
+
     task {
       try
         let! updateArticle = ctx.BindJsonAsync<UpdateArticleRequest>()

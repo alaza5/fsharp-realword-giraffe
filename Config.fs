@@ -13,6 +13,8 @@ open Controller
 module Config =
   open System.Data
   open Microsoft.Extensions.Configuration
+  open Newtonsoft.Json
+  open Microsoft.FSharpLu.Json
 
   let errorHandler (ex: Exception) (logger: ILogger) =
     logger.LogError(
@@ -30,7 +32,6 @@ module Config =
     |> ignore
 
   let configureApp (app: IApplicationBuilder) =
-
     let env = app.ApplicationServices.GetService<IWebHostEnvironment>()
     let isDevelepment = env.IsDevelopment()
     printfn $">> ENV: {env.EnvironmentName}"
@@ -47,8 +48,18 @@ module Config =
       .UseStaticFiles()
       .UseGiraffe(messageController)
 
-  let configureServices (services: IServiceCollection) : unit =
+  let getSerializer =
+    let customSettings =
+      JsonSerializerSettings(
+        ContractResolver =
+          Compact.Strict.RequireNonOptionalPropertiesContractResolver()
+      )
 
+    // if something breaks with serialization maybe should be (true,true)?
+    customSettings.Converters.Add(CompactUnionJsonConverter(true))
+    NewtonsoftJson.Serializer(customSettings)
+
+  let configureServices (services: IServiceCollection) : unit =
 
     services
       .AddCors()
@@ -58,6 +69,7 @@ module Config =
         let conn = settings.["DbConnection"]
         new Npgsql.NpgsqlConnection(conn))
       .AddRouting()
+      .AddSingleton<Json.ISerializer>(getSerializer)
     |> ignore
 
   let configureLogging (builder: ILoggingBuilder) =

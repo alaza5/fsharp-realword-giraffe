@@ -17,6 +17,7 @@ For more information on how to this works with other frontends/backends, head ov
 Used libraries
   - Dapper.FSharp
   - Npgsql
+  - Microsoft.FSharpLu.Json (deserialization)
 
 > Describe the general architecture of your app here
 
