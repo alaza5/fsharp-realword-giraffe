@@ -14,7 +14,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="Controller.fs" />
+    <Compile Include="src/Models/*" />
+    <Compile Include="src/Services/*" />
+    <Compile Include="src/Controller.fs" />
     <Compile Include="Config.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

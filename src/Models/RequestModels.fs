@@ -22,7 +22,7 @@ type CreateArticleRequest =
   { title: string
     description: string
     body: string
-    tagList: list string option }
+    tagList: string list option }
 
 
 [<CLIMutable>]
