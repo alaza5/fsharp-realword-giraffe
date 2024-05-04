@@ -1,0 +1,1 @@
+CREATE DATABASE fsharp_giraffe_database; 
