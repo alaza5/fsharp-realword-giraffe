@@ -14,9 +14,11 @@ module Hashing =
   let hashPassword (password: string) =
     BCrypt.HashPassword(inputKey = password, workFactor = hashWorkFactor)
 
+  let verifyPassword (password: string) (realPassword: string) =
+    BCrypt.Verify(password, realPassword)
+
 module JwtHelper =
-  let private secret =
-    "spadR2dre#u-ruBrE@TepA&*Uf@UspadR2dre#u-ruBrE@TepA&*Uf@U"
+  let private secret = "spadR2dre#u-ruBrE@TepA&*Uf@UspadR2dre#u-ruBrE@TepA&*Uf@U"
 
   let secretByteArray = Encoding.UTF8.GetBytes(secret)
 
@@ -35,10 +37,7 @@ module JwtHelper =
     let securityKey = SymmetricSecurityKey(secretByteArray)
 
     let signingCredentials =
-      SigningCredentials(
-        key = securityKey,
-        algorithm = SecurityAlgorithms.HmacSha256
-      )
+      SigningCredentials(key = securityKey, algorithm = SecurityAlgorithms.HmacSha256)
 
     let token =
       JwtSecurityToken(

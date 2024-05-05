@@ -8,7 +8,7 @@ module ResponseMappers =
 
   type DatabaseModels.users with
 
-    member this.toResponse() : UserResponse =
+    member this.response: UserResponse =
       let response: UserResponse =
         { email = this.email
           token = JwtHelper.generateToken this.email

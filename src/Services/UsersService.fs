@@ -8,6 +8,7 @@ module UsersService =
   open System.Data
   open ModelsMappers.DatabaseMappers
   open ModelsMappers.ResponseMappers
+  open InternalSecurity
 
   let postRegisterUser (next: HttpFunc) (ctx: HttpContext) =
     task {
@@ -20,7 +21,7 @@ module UsersService =
 
         // TODO can this even fail?
         let! _ = Repository.registerUser conn model
-        let response = model.toResponse ()
+        let response = model.response
         return! json response next ctx
       with ex ->
         return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
@@ -30,10 +31,24 @@ module UsersService =
   let postLoginUser (next: HttpFunc) (ctx: HttpContext) =
     task {
       try
-        // TODO add validation
-        let! loginRequest = ctx.BindJsonAsync<RegisterRequest>()
+        let! request = ctx.BindJsonAsync<LoginRequest>()
+        use conn = ctx.GetService<IDbConnection>()
+        let! users = Repository.getUsers conn request
 
-        return! json loginRequest next ctx
+        return!
+          (match users |> Seq.tryHead with
+           | None -> RequestErrors.NOT_FOUND $"User not found"
+           | Some user ->
+             let passwordCorrect = Hashing.verifyPassword request.password user.password
+
+             match passwordCorrect with
+             | false -> RequestErrors.UNAUTHORIZED "scheme" "realm" "Don't know who you are"
+             | true ->
+               let userResponse = user.response
+               json userResponse)
+            next
+            ctx
+
       with ex ->
         return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
     }
