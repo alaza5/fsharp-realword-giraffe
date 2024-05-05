@@ -1,2 +1,0 @@
--- liquibase formatted sql
--- changeset alaza5:create_messages

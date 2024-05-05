@@ -37,7 +37,7 @@ type ArticleResponse =
 
 [<CLIMutable>]
 type ArticlesResponse =
-  { articles: Article list
+  { articles: ArticleResponse list
     articlesCount: int }
 
 [<CLIMutable>]
