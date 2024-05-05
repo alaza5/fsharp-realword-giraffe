@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="src/utils/*" />
     <Compile Include="src/Models/*" />
     <Compile Include="src/Repositories/*" />
     <Compile Include="src/Services/*" />
