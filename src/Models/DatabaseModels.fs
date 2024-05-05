@@ -16,5 +16,4 @@ module DatabaseModels =
       created_at: DateTime
       updated_at: DateTime }
 
-
   let usersTable = table<users>

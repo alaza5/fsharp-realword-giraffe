@@ -6,15 +6,21 @@ module UsersService =
   open Models
   open Repository
   open System.Data
+  open ModelsMappers.DatabaseMappers
+  open ModelsMappers.ResponseMappers
 
   let postRegisterUser (next: HttpFunc) (ctx: HttpContext) =
     task {
       try
         // TODO validation and better mapping?
         let! request = ctx.BindJsonAsync<RegisterRequest>()
+        let model = request.toDbModel ()
 
         use conn = ctx.GetService<IDbConnection>()
-        let! response = Repository.registerUser conn request
+
+        // TODO can this even fail?
+        let! _ = Repository.registerUser conn model
+        let response = model.toResponse ()
         return! json response next ctx
       with ex ->
         return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx

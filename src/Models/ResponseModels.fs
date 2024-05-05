@@ -5,8 +5,8 @@ type UserResponse =
   { email: string
     token: string
     username: string
-    bio: string
-    image: string }
+    bio: string option
+    image: string option }
 
 [<CLIMutable>]
 type AuthorResponse =
@@ -50,8 +50,6 @@ type CommentResponse =
 
 [<CLIMutable>]
 type TagsResponse = { tags: string list }
-
-
 
 [<CLIMutable>]
 type ErrorBody = { body: string list }
