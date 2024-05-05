@@ -8,6 +8,12 @@ open ArticlesService
 
 
 module Controller =
+  open Microsoft.AspNetCore.Authentication.JwtBearer
+
+
+  let giraffeAuthorizeEndpoint: HttpFunc -> HttpContext -> HttpFuncResult =
+    let chall = challenge JwtBearerDefaults.AuthenticationScheme
+    requiresAuthentication chall
 
   let private defaultHandler = setStatusCode 404 >=> text "Not Found"
 

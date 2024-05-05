@@ -19,7 +19,7 @@ Used libraries
   - Npgsql (db connection)
   - Microsoft.FSharpLu.Json (deserialization)
   - BCrypt (password hashing)
-
+  - Microsoft.AspNetCore.Authentication.JwtBearer (JWT)
 > Describe the general architecture of your app here
 
 # Getting started
