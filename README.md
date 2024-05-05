@@ -15,9 +15,10 @@ For more information on how to this works with other frontends/backends, head ov
 
 # How it works
 Used libraries
-  - Dapper.FSharp
-  - Npgsql
+  - Dapper.FSharp (sql)
+  - Npgsql (db connection)
   - Microsoft.FSharpLu.Json (deserialization)
+  - BCrypt (password hashing)
 
 > Describe the general architecture of your app here
 
