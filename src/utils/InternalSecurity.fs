@@ -7,13 +7,14 @@ open System.Text
 open System.Security.Claims
 open System.IdentityModel.Tokens.Jwt
 
-module InternalSecurity =
-  let workFactor = 11
+
+module Hashing =
+  let hashWorkFactor = 11
 
   let hashPassword (password: string) =
-    BCrypt.HashPassword(inputKey = password, workFactor = workFactor)
+    BCrypt.HashPassword(inputKey = password, workFactor = hashWorkFactor)
 
-
+module JwtHelper =
   let private secret =
     "spadR2dre#u-ruBrE@TepA&*Uf@UspadR2dre#u-ruBrE@TepA&*Uf@U"
 
@@ -49,5 +50,6 @@ module InternalSecurity =
         signingCredentials = signingCredentials
       )
 
-    let tokenResult = {| Token = JwtSecurityTokenHandler().WriteToken(token) |}
+    let tokenResult = JwtSecurityTokenHandler().WriteToken(token)
+
     tokenResult

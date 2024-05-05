@@ -9,6 +9,9 @@ open Microsoft.Extensions.Logging
 open Microsoft.Extensions.DependencyInjection
 open Giraffe
 open Controller
+open Microsoft.AspNetCore.Authentication.JwtBearer
+open Microsoft.IdentityModel.Tokens
+open InternalSecurity
 
 module Config =
   open System.Data
@@ -45,6 +48,7 @@ module Config =
 
     builder
       .UseCors(configureCors)
+      .UseAuthentication()
       .UseStaticFiles()
       .UseGiraffe(messageController)
 
@@ -60,6 +64,24 @@ module Config =
     NewtonsoftJson.Serializer(customSettings)
 
   let configureServices (services: IServiceCollection) : unit =
+
+    services
+      .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+      .AddJwtBearer(fun options ->
+        options.TokenValidationParameters <-
+          TokenValidationParameters(
+            ValidateActor = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = JwtHelper.issuer,
+            ValidAudience = JwtHelper.audience,
+            IssuerSigningKey =
+              SymmetricSecurityKey(InternalSecurity.JwtHelper.secretByteArray)
+          ))
+    |> ignore
+
+
 
     services
       .AddCors()
