@@ -10,7 +10,7 @@ module Repository =
       into DatabaseModels.usersTable
       value data
     }
-    |> conn.InsertAsync
+    |> conn.InsertOutputAsync<DatabaseModels.users, DatabaseModels.users>
 
   let getUsersByEmail (conn: IDbConnection) (email: string) =
     select {

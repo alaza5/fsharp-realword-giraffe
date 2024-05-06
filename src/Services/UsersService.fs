@@ -20,10 +20,15 @@ module UsersService =
 
         use conn = ctx.GetService<IDbConnection>()
 
-        // TODO can this even fail?
-        let! _ = Repository.registerUser conn model
-        let response = model.response
-        return! json response next ctx
+        let! users = Repository.registerUser conn model
+
+        let response =
+          match users |> Seq.tryHead with
+          | None -> RequestErrors.NOT_FOUND $"User not found"
+          | Some user -> json user.response
+
+        return! response next ctx
+
       with ex ->
         return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
     }
@@ -36,18 +41,17 @@ module UsersService =
         use conn = ctx.GetService<IDbConnection>()
         let! users = Repository.getUsersByEmail conn request.email
 
-        return!
-          (match users |> Seq.tryHead with
-           | None -> RequestErrors.NOT_FOUND $"User not found"
-           | Some user ->
-             let passwordCorrect = Hashing.verifyPassword request.password user.password
+        let response =
+          match users |> Seq.tryHead with
+          | None -> RequestErrors.NOT_FOUND $"User not found"
+          | Some user ->
+            let passwordCorrect = Hashing.verifyPassword request.password user.password
 
-             match passwordCorrect with
-             | false -> RequestErrors.UNAUTHORIZED "scheme" "realm" "Don't know who you are"
-             | true -> json user.response)
-            next
-            ctx
+            match passwordCorrect with
+            | false -> RequestErrors.UNAUTHORIZED "scheme" "realm" "Don't know who you are"
+            | true -> json user.response
 
+        return! response next ctx
       with ex ->
         return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
     }
@@ -64,14 +68,12 @@ module UsersService =
         use conn = ctx.GetService<IDbConnection>()
         let! users = Repository.getUsersByEmail conn email
 
-        return!
-          (match users |> Seq.tryHead with
-           | None -> RequestErrors.NOT_FOUND $"User not found"
-           // TODO Do I need to return new token? api says so kinda?
-           | Some user -> json user.response)
-            next
-            ctx
+        let response =
+          match users |> Seq.tryHead with
+          | None -> RequestErrors.NOT_FOUND $"User not found"
+          | Some user -> json user.response
 
+        return! response next ctx
       with ex ->
         return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
     }
