@@ -18,9 +18,10 @@ module Controller =
   let private defaultHandler = setStatusCode 404 >=> text "Not Found"
 
   let root: HttpFunc -> HttpContext -> HttpFuncResult =
-    let getUser = route "/api/user" >=> UsersService.getUser
-    let postLoginUser = route "/api/users/login" >=> UsersService.postLoginUser
     let postRegisterUser = route "/api/users" >=> UsersService.postRegisterUser
+    let postLoginUser = route "/api/users/login" >=> UsersService.postLoginUser
+
+    let getUser = route "/api/user" >=> giraffeAuthorizeEndpoint >=> UsersService.getCurrentUser
     let postUpdateUser = route "/api/user" >=> UsersService.postUpdateUser
 
     let getProfile = routef "/api/user/%s" ProfilesService.getProfile
@@ -66,10 +67,6 @@ module Controller =
 
     let deletes =
       DELETE
-      >=> choose
-        [ deleteFollowUser
-          deleteArticle
-          deleteComment
-          deleteRemoveFavoriteArticle ]
+      >=> choose [ deleteFollowUser; deleteArticle; deleteComment; deleteRemoveFavoriteArticle ]
 
     choose [ gets; posts; puts; deletes; defaultHandler ]

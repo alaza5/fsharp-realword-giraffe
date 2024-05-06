@@ -12,9 +12,9 @@ module Repository =
     }
     |> conn.InsertAsync
 
-  let getUsers (conn: IDbConnection) (data: LoginRequest) =
+  let getUsersByEmail (conn: IDbConnection) (email: string) =
     select {
       for user in DatabaseModels.usersTable do
-        where (user.email = data.email)
+        where (user.email = email)
     }
     |> conn.SelectAsync<DatabaseModels.users>

@@ -9,6 +9,7 @@ module UsersService =
   open ModelsMappers.DatabaseMappers
   open ModelsMappers.ResponseMappers
   open InternalSecurity
+  open System.Security.Claims
 
   let postRegisterUser (next: HttpFunc) (ctx: HttpContext) =
     task {
@@ -33,7 +34,7 @@ module UsersService =
       try
         let! request = ctx.BindJsonAsync<LoginRequest>()
         use conn = ctx.GetService<IDbConnection>()
-        let! users = Repository.getUsers conn request
+        let! users = Repository.getUsersByEmail conn request.email
 
         return!
           (match users |> Seq.tryHead with
@@ -43,9 +44,7 @@ module UsersService =
 
              match passwordCorrect with
              | false -> RequestErrors.UNAUTHORIZED "scheme" "realm" "Don't know who you are"
-             | true ->
-               let userResponse = user.response
-               json userResponse)
+             | true -> json user.response)
             next
             ctx
 
@@ -54,7 +53,29 @@ module UsersService =
     }
 
 
-  let getUser (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
+  let getCurrentUser (next: HttpFunc) (ctx: HttpContext) =
+    task {
+      try
+        use conn = ctx.GetService<IDbConnection>()
+
+        // TODO can I do FindFirstValue?
+        let userId = ctx.User.FindFirst(ClaimTypes.NameIdentifier)
+        let email = userId.Value
+        let! users = Repository.getUsersByEmail conn email
+
+        return!
+          (match users |> Seq.tryHead with
+           | None -> RequestErrors.NOT_FOUND $"User not found"
+           // TODO Do I need to return new token? api says so kinda?
+           | Some user -> json user.response)
+            next
+            ctx
+
+      with ex ->
+        return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
+    }
+
+
 
   let postUpdateUser (next: HttpFunc) (ctx: HttpContext) =
     task {
