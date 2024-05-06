@@ -9,7 +9,7 @@ module DatabaseMappers =
 
   type RegisterRequest with
 
-    member this.toDbModel() =
+    member this.toDbModel =
       let user: DatabaseModels.users =
         { id = Guid.NewGuid()
           email = this.email

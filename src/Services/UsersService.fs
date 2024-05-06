@@ -16,7 +16,7 @@ module UsersService =
       try
         // TODO validation and better mapping?
         let! request = ctx.BindJsonAsync<RegisterRequest>()
-        let model = request.toDbModel ()
+        let model = request.toDbModel
 
         use conn = ctx.GetService<IDbConnection>()
 
@@ -56,11 +56,12 @@ module UsersService =
   let getCurrentUser (next: HttpFunc) (ctx: HttpContext) =
     task {
       try
-        use conn = ctx.GetService<IDbConnection>()
 
         // TODO can I do FindFirstValue?
         let userId = ctx.User.FindFirst(ClaimTypes.NameIdentifier)
         let email = userId.Value
+
+        use conn = ctx.GetService<IDbConnection>()
         let! users = Repository.getUsersByEmail conn email
 
         return!
@@ -75,13 +76,28 @@ module UsersService =
         return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
     }
 
-
-
   let postUpdateUser (next: HttpFunc) (ctx: HttpContext) =
     task {
       try
-        let! loginRequest = ctx.BindJsonAsync<UpdateUserRequest>()
-        return! json loginRequest next ctx
+
+        let userId = ctx.User.FindFirst(ClaimTypes.NameIdentifier)
+        let currentUserEmail = userId.Value
+
+        use conn = ctx.GetService<IDbConnection>()
+        let! users = Repository.getUsersByEmail conn currentUserEmail
+        let! updateRequest = ctx.BindJsonAsync<UpdateUserRequest>()
+
+        match users |> Seq.tryHead with
+        | None -> return! RequestErrors.NOT_FOUND $"User not found" next ctx
+        | Some user ->
+          let updatedUser = user.updateUser (updateRequest)
+          let! returnedUser = Repository.updateUser conn currentUserEmail updatedUser
+
+          match returnedUser |> Seq.tryHead with
+          | None -> return! RequestErrors.NOT_FOUND $"User not found" next ctx
+          | Some u -> return! json u.response next ctx
+
+
       with ex ->
         return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
     }

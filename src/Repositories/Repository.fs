@@ -18,3 +18,15 @@ module Repository =
         where (user.email = email)
     }
     |> conn.SelectAsync<DatabaseModels.users>
+
+  let updateUser
+    (conn: IDbConnection)
+    (currentUserEmail: string)
+    (updatedUser: DatabaseModels.users)
+    =
+    update {
+      for user in DatabaseModels.usersTable do
+        set updatedUser
+        where (user.email = currentUserEmail)
+    }
+    |> conn.UpdateOutputAsync<DatabaseModels.users, DatabaseModels.users>

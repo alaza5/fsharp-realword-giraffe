@@ -22,7 +22,7 @@ module Controller =
     let postLoginUser = route "/api/users/login" >=> UsersService.postLoginUser
 
     let getUser = route "/api/user" >=> giraffeAuthorizeEndpoint >=> UsersService.getCurrentUser
-    let postUpdateUser = route "/api/user" >=> UsersService.postUpdateUser
+    let postUpdateUser = route "/api/user" >=> giraffeAuthorizeEndpoint >=> UsersService.postUpdateUser
 
     let getProfile = routef "/api/user/%s" ProfilesService.getProfile
     let postFollowUser = routef "/api/profiles/%s/follow" ProfilesService.postFollowUser
