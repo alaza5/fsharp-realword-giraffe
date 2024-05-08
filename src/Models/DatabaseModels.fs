@@ -17,3 +17,21 @@ module DatabaseModels =
       updated_at: DateTime }
 
   let usersTable = table<users>
+
+
+  [<CLIMutable>]
+  type articles =
+    { id: Guid
+      author_id: Guid
+      slug: string
+      title: string
+      description: string
+      body: string
+      createdAt: DateTime
+      updatedAt: DateTime }
+
+  let articlesTable = table<articles>
+
+  type articles_tags = { article_id: Guid; tag_id: Guid }
+
+  let articles_tagsTable = table<articles_tags>
