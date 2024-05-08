@@ -1,5 +1,7 @@
 namespace Models
 
+open System
+
 [<CLIMutable>]
 type UserResponse =
   { email: string
@@ -29,8 +31,8 @@ type ArticleResponse =
     description: string
     body: string
     tagList: string list
-    createdAt: string
-    updatedAt: string
+    createdAt: DateTime
+    updatedAt: DateTime
     favorited: bool
     favoritesCount: int
     author: AuthorResponse }
@@ -43,8 +45,8 @@ type ArticlesResponse =
 [<CLIMutable>]
 type CommentResponse =
   { id: int
-    createdAt: string
-    updatedAt: string
+    createdAt: DateTime
+    updatedAt: DateTime
     body: string
     author: AuthorResponse }
 

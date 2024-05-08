@@ -32,7 +32,7 @@ module JwtHelper =
 
     let now = DateTime.UtcNow
     let from = now
-    let until = now.AddHours 1.0
+    let until = now.AddHours 12.0
 
     let securityKey = SymmetricSecurityKey(secretByteArray)
 

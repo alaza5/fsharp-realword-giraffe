@@ -27,8 +27,8 @@ module DatabaseModels =
       title: string
       description: string
       body: string
-      createdAt: DateTime
-      updatedAt: DateTime }
+      created_at: DateTime
+      updated_at: DateTime }
 
   let articlesTable = table<articles>
 

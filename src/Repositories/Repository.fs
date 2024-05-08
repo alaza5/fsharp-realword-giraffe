@@ -28,8 +28,6 @@ module Repository =
         | None -> Error "User not found"
     }
 
-
-
   let updateUser
     (conn: IDbConnection)
     (currentUserEmail: string)
@@ -41,3 +39,20 @@ module Repository =
         where (user.email = currentUserEmail)
     }
     |> conn.UpdateOutputAsync<DatabaseModels.users, DatabaseModels.users>
+
+
+
+  let createArticle (conn: IDbConnection) (article: DatabaseModels.articles) =
+    task {
+      let! retVal =
+        insert {
+          into DatabaseModels.articlesTable
+          value article
+        }
+        |> conn.InsertOutputAsync<DatabaseModels.articles, DatabaseModels.articles>
+
+      return
+        match retVal |> Seq.tryHead with
+        | None -> Error "Did't inserted article"
+        | Some x -> Ok x
+    }

@@ -34,7 +34,7 @@ module UsersService =
         let response =
           match users |> Seq.tryHead with
           | None -> RequestErrors.NOT_FOUND $"User not found"
-          | Some user -> json user.response
+          | Some user -> json user.toUserResponse
 
         return! response next ctx
 
@@ -58,7 +58,7 @@ module UsersService =
 
             match passwordCorrect with
             | false -> RequestErrors.UNAUTHORIZED "scheme" "realm" "Don't know who you are"
-            | true -> json user.response
+            | true -> json user.toUserResponse
 
         return! response next ctx
       with ex ->
@@ -74,7 +74,7 @@ module UsersService =
         let response =
           match user with
           | Error message -> RequestErrors.NOT_FOUND message
-          | Ok user -> json user.response
+          | Ok user -> json user.toUserResponse
 
         return! response next ctx
       with ex ->
@@ -96,7 +96,7 @@ module UsersService =
 
           match returnedUser |> Seq.tryHead with
           | None -> return! RequestErrors.NOT_FOUND $"User not found" next ctx
-          | Some u -> return! json u.response next ctx
+          | Some u -> return! json u.toUserResponse next ctx
 
 
       with ex ->

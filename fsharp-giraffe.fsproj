@@ -21,7 +21,9 @@
     <Compile Include="src/Models/*" />
     <Compile Include="src/ModelsMappers/*" />
     <Compile Include="src/Repositories/*" />
-    <Compile Include="src/Services/*" />
+    <Compile Include="src/Services/UsersService.fs" />
+    <Compile Include="src/Services/ArticlesService.fs" />
+    <Compile Include="src/Services/ProfilesService.fs" />
     <Compile Include="src/Controller.fs" />
     <Compile Include="Config.fs" />
     <Compile Include="Program.fs" />

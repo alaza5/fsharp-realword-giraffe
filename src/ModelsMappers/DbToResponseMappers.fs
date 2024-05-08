@@ -10,13 +10,23 @@ module DbToResponseMappers =
 
   type DatabaseModels.users with
 
-    member this.response: UserResponse =
+    member this.toUserResponse: UserResponse =
       let response: UserResponse =
         { email = this.email
           token = JwtHelper.generateToken this.email
           username = this.username
           bio = this.bio
           image = this.image }
+
+      response
+
+    member this.toAuthorResponse: AuthorResponse =
+      let response: AuthorResponse =
+        { username = this.username
+          bio = this.bio |> Option.defaultValue ""
+          image = this.image |> Option.defaultValue ""
+          //TODO
+          following = false }
 
       response
 
@@ -46,5 +56,26 @@ module DbToResponseMappers =
             updated_at = updated_at
             image = image
             bio = bio }
+
+      response
+
+
+  type DatabaseModels.articles with
+
+    member this.toArticleResponse(user: DatabaseModels.users) : ArticleResponse =
+      let response: ArticleResponse =
+        { slug = this.slug
+          title = this.title
+          description = this.description
+          body = this.body
+          //TODO
+          tagList = []
+          createdAt = this.created_at
+          updatedAt = this.updated_at
+          //TODO
+          favorited = false
+          //TODO
+          favoritesCount = 0
+          author = user.toAuthorResponse }
 
       response
