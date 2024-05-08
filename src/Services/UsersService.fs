@@ -11,6 +11,15 @@ module UsersService =
   open InternalSecurity
   open System.Security.Claims
 
+  let getCurrentlyLoggedInUser (ctx: HttpContext) =
+    task {
+      let userId = ctx.User.FindFirst(ClaimTypes.NameIdentifier)
+      let currentUserEmail = userId.Value
+
+      use conn = ctx.GetService<IDbConnection>()
+      return! Repository.fetchCurrentUser conn currentUserEmail
+    }
+
   let postRegisterUser (next: HttpFunc) (ctx: HttpContext) =
     task {
       try
@@ -60,13 +69,7 @@ module UsersService =
   let getCurrentUser (next: HttpFunc) (ctx: HttpContext) =
     task {
       try
-
-        // TODO can I do FindFirstValue?
-        let userId = ctx.User.FindFirst(ClaimTypes.NameIdentifier)
-        let email = userId.Value
-
-        use conn = ctx.GetService<IDbConnection>()
-        let! user = Repository.fetchCurrentUser conn email
+        let! user = getCurrentlyLoggedInUser ctx
 
         let response =
           match user with
@@ -81,19 +84,15 @@ module UsersService =
   let postUpdateUser (next: HttpFunc) (ctx: HttpContext) =
     task {
       try
-
-        let userId = ctx.User.FindFirst(ClaimTypes.NameIdentifier)
-        let currentUserEmail = userId.Value
-
         use conn = ctx.GetService<IDbConnection>()
-        let! user = Repository.fetchCurrentUser conn currentUserEmail
+        let! user = getCurrentlyLoggedInUser ctx
         let! updateRequest = ctx.BindJsonAsync<UpdateUserRequest>()
 
         match user with
         | Error message -> return! RequestErrors.NOT_FOUND message next ctx
         | Ok user ->
           let updatedUser = user.updateUser (updateRequest)
-          let! returnedUser = Repository.updateUser conn currentUserEmail updatedUser
+          let! returnedUser = Repository.updateUser conn user.email updatedUser
 
           match returnedUser |> Seq.tryHead with
           | None -> return! RequestErrors.NOT_FOUND $"User not found" next ctx
