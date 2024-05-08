@@ -4,7 +4,7 @@ namespace ModelsMappers
 open Models
 open InternalSecurity
 
-module DatabaseMappers =
+module ResponseToDbMappers =
   open System
 
   type RegisterRequest with

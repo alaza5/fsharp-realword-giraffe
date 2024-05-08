@@ -5,7 +5,7 @@ open Models
 open System
 
 
-module ResponseMappers =
+module DbToResponseMappers =
   open InternalSecurity
 
   type DatabaseModels.users with

@@ -6,8 +6,8 @@ module UsersService =
   open Models
   open Repository
   open System.Data
-  open ModelsMappers.DatabaseMappers
-  open ModelsMappers.ResponseMappers
+  open ModelsMappers.ResponseToDbMappers
+  open ModelsMappers.DbToResponseMappers
   open InternalSecurity
   open System.Security.Claims
 
