@@ -39,12 +39,12 @@ module UsersService =
       try
         let! request = ctx.BindJsonAsync<LoginRequest>()
         use conn = ctx.GetService<IDbConnection>()
-        let! users = Repository.getUsersByEmail conn request.email
+        let! user = Repository.fetchCurrentUser conn request.email
 
         let response =
-          match users |> Seq.tryHead with
-          | None -> RequestErrors.NOT_FOUND $"User not found"
-          | Some user ->
+          match user with
+          | Error message -> RequestErrors.NOT_FOUND message
+          | Ok user ->
             let passwordCorrect = Hashing.verifyPassword request.password user.password
 
             match passwordCorrect with
@@ -66,12 +66,12 @@ module UsersService =
         let email = userId.Value
 
         use conn = ctx.GetService<IDbConnection>()
-        let! users = Repository.getUsersByEmail conn email
+        let! user = Repository.fetchCurrentUser conn email
 
         let response =
-          match users |> Seq.tryHead with
-          | None -> RequestErrors.NOT_FOUND $"User not found"
-          | Some user -> json user.response
+          match user with
+          | Error message -> RequestErrors.NOT_FOUND message
+          | Ok user -> json user.response
 
         return! response next ctx
       with ex ->
@@ -86,12 +86,12 @@ module UsersService =
         let currentUserEmail = userId.Value
 
         use conn = ctx.GetService<IDbConnection>()
-        let! users = Repository.getUsersByEmail conn currentUserEmail
+        let! user = Repository.fetchCurrentUser conn currentUserEmail
         let! updateRequest = ctx.BindJsonAsync<UpdateUserRequest>()
 
-        match users |> Seq.tryHead with
-        | None -> return! RequestErrors.NOT_FOUND $"User not found" next ctx
-        | Some user ->
+        match user with
+        | Error message -> return! RequestErrors.NOT_FOUND message next ctx
+        | Ok user ->
           let updatedUser = user.updateUser (updateRequest)
           let! returnedUser = Repository.updateUser conn currentUserEmail updatedUser
 

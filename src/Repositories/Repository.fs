@@ -12,12 +12,23 @@ module Repository =
     }
     |> conn.InsertOutputAsync<DatabaseModels.users, DatabaseModels.users>
 
-  let getUsersByEmail (conn: IDbConnection) (email: string) =
-    select {
-      for user in DatabaseModels.usersTable do
-        where (user.email = email)
+
+  let fetchCurrentUser (conn: IDbConnection) (email: string) =
+    task {
+      let! users =
+        select {
+          for user in DatabaseModels.usersTable do
+            where (user.email = email)
+        }
+        |> conn.SelectAsync<DatabaseModels.users>
+
+      return
+        match users |> Seq.tryHead with
+        | Some x -> Ok x
+        | None -> Error "User not found"
     }
-    |> conn.SelectAsync<DatabaseModels.users>
+
+
 
   let updateUser
     (conn: IDbConnection)
