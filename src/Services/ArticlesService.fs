@@ -69,9 +69,13 @@ module ArticlesService =
     task {
       try
         use conn = ctx.GetService<IDbConnection>()
-        let! tags = Repository.getTags conn 
-        let response = tags |> Seq.map _.name
-        return! json response next ctx
+        let! tags = Repository.getTags conn
+
+        match tags with
+        | Ok result ->
+          let response = result |> Seq.map (fun x -> x.name)
+          return! json response next ctx
+        | Error ex -> return! ServerErrors.INTERNAL_ERROR $"Exception: {ex}" next ctx
       with ex ->
         return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
     }

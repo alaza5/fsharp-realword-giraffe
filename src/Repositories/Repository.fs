@@ -71,5 +71,5 @@ module Repository =
   let sqlFindInTags = sprintf "SELECT * FROM tags WHERE name IN @tagsToFind"
 
   let findTags (conn: IDbConnection) (tagsToFind: string list) =
-    let param = tagsToFind |> List.toArray
-    conn.QueryAsync<DatabaseModels.tags>({| tagsToFind = param |})
+    let data = {| tagsToFind = tagsToFind |}
+    conn.QuerySingleAsync<DatabaseModels.tags>(sqlFindInTags, data)
