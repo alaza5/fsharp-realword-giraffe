@@ -21,23 +21,43 @@ module Controller =
     let postRegisterUser = route "/api/users" >=> UsersService.postRegisterUser
     let postLoginUser = route "/api/users/login" >=> UsersService.postLoginUser
 
-    let getUser = route "/api/user" >=> giraffeAuthorizeEndpoint >=> UsersService.getCurrentUser
-    let postUpdateUser = route "/api/user" >=> giraffeAuthorizeEndpoint >=> UsersService.postUpdateUser
+    let getUser =
+      route "/api/user" >=> giraffeAuthorizeEndpoint >=> UsersService.getCurrentUser
+
+    let postUpdateUser =
+      route "/api/user" >=> giraffeAuthorizeEndpoint >=> UsersService.postUpdateUser
 
     let getProfile = routef "/api/user/%s" ProfilesService.getProfile
     let postFollowUser = routef "/api/profiles/%s/follow" ProfilesService.postFollowUser
-    let deleteFollowUser = routef "/api/profiles/%s/follow" ProfilesService.deleteFollowUser
+
+    let deleteFollowUser =
+      routef "/api/profiles/%s/follow" ProfilesService.deleteFollowUser
+
     let getListArticles = route "/api/articles" >=> ArticlesService.getListArticles
     let getFeedArticles = route "/api/articles/feed" >=> ArticlesService.getFeedArticles
     let getArticle = routef "/api/articles/%s" ArticlesService.getArticle
     let postCreateArticle = route "/api/articles" >=> ArticlesService.postCreateArticle
     let putUpdateArticle = routef "/api/articles/%s" ArticlesService.putUpdateArticle
     let deleteArticle = routef "/api/articles/%s" ArticlesService.deleteArticle
-    let postArticleComment = routef "/api/articles/%s/comments" ArticlesService.postArticleComment
-    let getArticleComments = routef "/api/articles/%s/comments" ArticlesService.getArticleComments
-    let deleteComment = routef "/api/articles/%s/comments/%s" ArticlesService.deleteComment
-    let postAddFavoriteArticle = routef "/api/articles/%s/favorite" ArticlesService.postAddFavoriteArticle
-    let deleteRemoveFavoriteArticle = routef "/api/articles/%s/favorite" ArticlesService.deleteRemoveFavoriteArticle
+
+    let postArticleComment =
+      routef "/api/articles/%s/comments" ArticlesService.postArticleComment
+
+    let getArticleComments =
+      routef "/api/articles/%s/comments" ArticlesService.getArticleComments
+
+    let deleteComment =
+      routef "/api/articles/%s/comments/%s" ArticlesService.deleteComment
+
+    let postAddFavoriteArticle =
+      routef "/api/articles/%s/favorite" ArticlesService.postAddFavoriteArticle
+
+    let deleteRemoveFavoriteArticle =
+      routef "/api/articles/%s/favorite" ArticlesService.deleteRemoveFavoriteArticle
+
+    let postTags =
+      route "/api/tags" >=> giraffeAuthorizeEndpoint >=> ArticlesService.postAddTags
+
     let getTags = route "/api/tags" >=> ArticlesService.getTags
 
 
@@ -61,7 +81,8 @@ module Controller =
           postFollowUser
           postCreateArticle
           postArticleComment
-          postAddFavoriteArticle ]
+          postAddFavoriteArticle
+          postTags ]
 
     let puts = PUT >=> choose [ putUpdateArticle ]
 

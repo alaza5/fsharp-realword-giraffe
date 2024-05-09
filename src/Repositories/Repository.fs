@@ -3,7 +3,10 @@ namespace Repository
 module Repository =
   open System.Data
   open Dapper.FSharp.PostgreSQL
+  open Dapper
   open Models
+  open System
+
 
   let registerUser (conn: IDbConnection) (data: DatabaseModels.users) =
     insert {
@@ -56,3 +59,27 @@ module Repository =
         | None -> Error "Did't inserted article"
         | Some x -> Ok x
     }
+
+
+  let addTags (conn: IDbConnection) (tagsRequest: AddTagsRequest) =
+    let sql =
+      @"INSERT INTO tags (id, name) VALUES (@id, @name) ON CONFLICT (name) DO NOTHING;"
+
+    let listOfTags =
+      tagsRequest.tags |> List.map (fun tag -> {| id = Guid.NewGuid(); name = tag |})
+
+    conn.Execute(sql, listOfTags)
+
+  let getTags (conn: IDbConnection) =
+    select {
+      for tags in DatabaseModels.tagsTable do
+        selectAll
+    }
+    |> conn.SelectAsync<DatabaseModels.tags>
+
+  let findTags (conn: IDbConnection) (tagsToFind: string list) =
+    select {
+      for tags in DatabaseModels.tagsTable do
+        where (isIn tags.name tagsToFind)
+    }
+    |> conn.SelectAsync<DatabaseModels.tags>

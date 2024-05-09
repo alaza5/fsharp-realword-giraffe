@@ -65,4 +65,24 @@ module ArticlesService =
     text "ok" next ctx
 
 
-  let getTags (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
+  let getTags (next: HttpFunc) (ctx: HttpContext) =
+    task {
+      try
+        use conn = ctx.GetService<IDbConnection>()
+        let! tags = Repository.getTags conn 
+        let response = tags |> Seq.map _.name
+        return! json response next ctx
+      with ex ->
+        return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
+    }
+
+  let postAddTags (next: HttpFunc) (ctx: HttpContext) =
+    task {
+      try
+        let! addTagsRequest = ctx.BindJsonAsync<AddTagsRequest>()
+        use conn = ctx.GetService<IDbConnection>()
+        let response = Repository.addTags conn addTagsRequest
+        return! json response next ctx
+      with ex ->
+        return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
+    }

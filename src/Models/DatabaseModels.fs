@@ -35,3 +35,7 @@ module DatabaseModels =
   type articles_tags = { article_id: Guid; tag_id: Guid }
 
   let articles_tagsTable = table<articles_tags>
+
+  type tags = { id: Guid; name: string }
+
+  let tagsTable = table<tags>

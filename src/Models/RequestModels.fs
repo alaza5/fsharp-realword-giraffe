@@ -33,3 +33,10 @@ type UpdateArticleRequest =
 
 [<CLIMutable>]
 type AddArticleCommentRequest = { body: string }
+
+
+[<CLIMutable>]
+type AddTagsRequest = { tags: string list }
+
+[<CLIMutable>]
+type GetTagIdsRequest = { tags: string list }
