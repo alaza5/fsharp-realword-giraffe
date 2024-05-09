@@ -55,8 +55,7 @@ module Controller =
     let deleteRemoveFavoriteArticle =
       routef "/api/articles/%s/favorite" ArticlesService.deleteRemoveFavoriteArticle
 
-    let postTags =
-      route "/api/tags" >=> giraffeAuthorizeEndpoint >=> ArticlesService.postAddTags
+    let postTags = route "/api/tags" >=> ArticlesService.postAddTags
 
     let getTags = route "/api/tags" >=> ArticlesService.getTags
 

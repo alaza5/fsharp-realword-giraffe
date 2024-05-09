@@ -7,21 +7,46 @@ module Repository =
   open Models
   open System
   open DapperExtensions.DapperExtensions
+  open System.Collections.Generic
 
 
   let sqlInsertUser =
-    """
-      INSERT INTO users (id, email, username, password, bio, image, created_at, updated_at) 
-            OUTPUT inserted.*
-            VALUES (@id, @email, @username, @password, @bio, @image, @created_at, @updated_at)
-    """
+    @"INSERT INTO users (id, email, username, password, bio, image, created_at, updated_at) VALUES (@id, @Email, @username, @password, @bio, @image, @created_at, @updated_at);"
+  // RETURNING *;
 
   let registerUser (conn: IDbConnection) (data: DatabaseModels.users) =
-    conn.QuerySingleAsyncResult<DatabaseModels.users>(sqlInsertUser, data)
+    printfn $">> data {data}"
+    // let dictionary = new Dictionary<string, object>
+    // {
+    //     { "@ProductId", 1 }
+    // };
+
+
+    // let data2 =
+    //   {| id = data.id
+    //      email = data.email
+    //      username = data.username
+    //      password = data.password
+    //      bio = data.bio
+    //      image = data.image
+    //      created_at = data.created_at
+    //      updated_at = data.updated_at
+
+    //   |}
+
+    // let parameters = DynamicParameters(data2)
+    // let dictionary = dict [ "@Email", "xd" ]
+    // let parameters = DynamicParameters(dictionary)
+
+    conn.Execute(sqlInsertUser, data)
+  // conn.ExecuteAsync<DatabaseModels.users>(sqlInsertUser, data)
+  // conn.QuerySingleAsyncResult<DatabaseModels.users>(sqlInsertUser, data)
+  // conn.ExecuteAsync<DatabaseModels.users>(sqlInsertUser, data)
+  // conn.QuerySingleAsyncResult<DatabaseModels.users>(sqlInsertUser, {| email = "lol" |})
 
 
 
-  let private sqlGetUserByEmail = "SELECT * FROM users WHERE email = @email"
+  let private sqlGetUserByEmail = @"SELECT * FROM users WHERE email = @email"
 
   let fetchCurrentUser (conn: IDbConnection) (email: string) =
     conn.QuerySingleAsyncResult<DatabaseModels.users>(sqlGetUserByEmail, {| email = email |})
@@ -29,7 +54,7 @@ module Repository =
 
 
   let private sqlUpdateUser =
-    "UPDATE users SET id = @id, email = @email, username = @username, password = @password, bio = @bio, image = @image, created_at = @created_at, updated_at = @updated_at WHERE email = @currentUserEmail"
+    @"UPDATE users SET id = @id, email = @email, username = @username, password = @password, bio = @bio, image = @image, created_at = @created_at, updated_at = @updated_at WHERE email = @currentUserEmail"
 
   let updateUser
     (conn: IDbConnection)
@@ -45,7 +70,7 @@ module Repository =
 
 
   let sqlCreateArticle =
-    "INSERT INTO articles (id, author_id, slug, title, description, body, created_at, updated_at) VALUES (@id, @author_id, @slug, @title, @description, @body, @created_at, @updated_at)"
+    @"INSERT INTO articles (id, author_id, slug, title, description, body, created_at, updated_at) VALUES (@id, @author_id, @slug, @title, @description, @body, @created_at, @updated_at)"
 
   let createArticle (conn: IDbConnection) (article: DatabaseModels.articles) =
     conn.QuerySingleAsyncResult<DatabaseModels.articles>(sqlUpdateUser, article)

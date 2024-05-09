@@ -18,34 +18,28 @@ module ArticlesService =
 
   let postCreateArticle (next: HttpFunc) (ctx: HttpContext) =
     task {
-      try
-        let! createArticleRequest = ctx.BindJsonAsync<CreateArticleRequest>()
-        use conn = ctx.GetService<IDbConnection>()
-        let! user = getCurrentlyLoggedInUser ctx
+      let! createArticleRequest = ctx.BindJsonAsync<CreateArticleRequest>()
+      use conn = ctx.GetService<IDbConnection>()
+      let! user = getCurrentlyLoggedInUser ctx
 
-        match user with
-        | Error message -> return! RequestErrors.NOT_FOUND message next ctx
-        | Ok user ->
-          let articleToInsert = createArticleRequest.toDbModel user
-          let! insertedArticle = Repository.createArticle conn articleToInsert
+      match user with
+      | Error message -> return! RequestErrors.NOT_FOUND message next ctx
+      | Ok user ->
+        let articleToInsert = createArticleRequest.toDbModel user
+        let! insertedArticle = Repository.createArticle conn articleToInsert
 
-          match insertedArticle with
-          | Error message -> return! ServerErrors.INTERNAL_ERROR message next ctx
-          | Ok article -> return! json article next ctx
+        match insertedArticle with
+        | Error message -> return! ServerErrors.INTERNAL_ERROR message next ctx
+        | Ok article -> return! json article next ctx
 
-      with ex ->
-        return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
     }
 
   let putUpdateArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
     printfn $">> slug {slug}"
 
     task {
-      try
-        let! updateArticle = ctx.BindJsonAsync<UpdateArticleRequest>()
-        return! json updateArticle next ctx
-      with ex ->
-        return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
+      let! updateArticle = ctx.BindJsonAsync<UpdateArticleRequest>()
+      return! json updateArticle next ctx
     }
 
   let deleteArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
@@ -67,26 +61,20 @@ module ArticlesService =
 
   let getTags (next: HttpFunc) (ctx: HttpContext) =
     task {
-      try
-        use conn = ctx.GetService<IDbConnection>()
-        let! tags = Repository.getTags conn
+      use conn = ctx.GetService<IDbConnection>()
+      let! tags = Repository.getTags conn
 
-        match tags with
-        | Ok result ->
-          let response = result |> Seq.map (fun x -> x.name)
-          return! json response next ctx
-        | Error ex -> return! ServerErrors.INTERNAL_ERROR $"Exception: {ex}" next ctx
-      with ex ->
-        return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
+      match tags with
+      | Ok result ->
+        let response = result |> Seq.map (fun x -> x.name)
+        return! json response next ctx
+      | Error ex -> return! ServerErrors.INTERNAL_ERROR $"Exception: {ex}" next ctx
     }
 
   let postAddTags (next: HttpFunc) (ctx: HttpContext) =
     task {
-      try
-        let! addTagsRequest = ctx.BindJsonAsync<AddTagsRequest>()
-        use conn = ctx.GetService<IDbConnection>()
-        let response = Repository.addTags conn addTagsRequest
-        return! json response next ctx
-      with ex ->
-        return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
+      let! addTagsRequest = ctx.BindJsonAsync<AddTagsRequest>()
+      use conn = ctx.GetService<IDbConnection>()
+      let response = Repository.addTags conn addTagsRequest
+      return! json response next ctx
     }

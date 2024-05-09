@@ -22,83 +22,70 @@ module UsersService =
 
   let postRegisterUser (next: HttpFunc) (ctx: HttpContext) =
     task {
-      try
-        // TODO validation and better mapping?
-        let! request = ctx.BindJsonAsync<RegisterRequest>()
-        let model = request.toDbModel
+      // TODO validation and better mapping?
+      let! request = ctx.BindJsonAsync<RegisterRequest>()
+      let model = request.toDbModel
 
-        use conn = ctx.GetService<IDbConnection>()
+      use conn = ctx.GetService<IDbConnection>()
 
-        let! users = Repository.registerUser conn model
+      let user = Repository.registerUser conn model
 
-        let response =
-          match users |> Seq.tryHead with
-          | None -> RequestErrors.NOT_FOUND $"User not found"
-          | Some user -> json user.toUserResponse
+      // let response =
+      //   match user with
+      //   | Error e -> RequestErrors.NOT_FOUND e
+      //   | Ok user -> json user.toUserResponse
 
-        return! response next ctx
+      return! json user next ctx
 
-      with ex ->
-        return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
     }
 
 
   let postLoginUser (next: HttpFunc) (ctx: HttpContext) =
     task {
-      try
-        let! request = ctx.BindJsonAsync<LoginRequest>()
-        use conn = ctx.GetService<IDbConnection>()
-        let! user = Repository.fetchCurrentUser conn request.email
+      let! request = ctx.BindJsonAsync<LoginRequest>()
+      use conn = ctx.GetService<IDbConnection>()
+      let! user = Repository.fetchCurrentUser conn request.email
 
-        let response =
-          match user with
-          | Error message -> RequestErrors.NOT_FOUND message
-          | Ok user ->
-            let passwordCorrect = Hashing.verifyPassword request.password user.password
+      let response =
+        match user with
+        | Error message -> RequestErrors.NOT_FOUND message
+        | Ok user ->
+          let passwordCorrect = Hashing.verifyPassword request.password user.password
 
-            match passwordCorrect with
-            | false -> RequestErrors.UNAUTHORIZED "scheme" "realm" "Don't know who you are"
-            | true -> json user.toUserResponse
+          match passwordCorrect with
+          | false -> RequestErrors.UNAUTHORIZED "scheme" "realm" "Don't know who you are"
+          | true -> json user.toUserResponse
 
-        return! response next ctx
-      with ex ->
-        return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
+      return! response next ctx
     }
 
 
   let getCurrentUser (next: HttpFunc) (ctx: HttpContext) =
     task {
-      try
-        let! user = getCurrentlyLoggedInUser ctx
+      let! user = getCurrentlyLoggedInUser ctx
 
-        let response =
-          match user with
-          | Error message -> RequestErrors.NOT_FOUND message
-          | Ok user -> json user.toUserResponse
+      let response =
+        match user with
+        | Error message -> RequestErrors.NOT_FOUND message
+        | Ok user -> json user.toUserResponse
 
-        return! response next ctx
-      with ex ->
-        return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
+      return! response next ctx
     }
 
   let postUpdateUser (next: HttpFunc) (ctx: HttpContext) =
     task {
-      try
-        use conn = ctx.GetService<IDbConnection>()
-        let! user = getCurrentlyLoggedInUser ctx
-        let! updateRequest = ctx.BindJsonAsync<UpdateUserRequest>()
+      use conn = ctx.GetService<IDbConnection>()
+      let! user = getCurrentlyLoggedInUser ctx
+      let! updateRequest = ctx.BindJsonAsync<UpdateUserRequest>()
 
-        match user with
-        | Error message -> return! RequestErrors.NOT_FOUND message next ctx
-        | Ok user ->
-          let updatedUser = user.updateUser (updateRequest)
-          let! returnedUser = Repository.updateUser conn user.email updatedUser
+      match user with
+      | Error message -> return! RequestErrors.NOT_FOUND message next ctx
+      | Ok user ->
+        let updatedUser = user.updateUser (updateRequest)
+        let! returnedUser = Repository.updateUser conn user.email updatedUser
 
-          match returnedUser |> Seq.tryHead with
-          | None -> return! RequestErrors.NOT_FOUND $"User not found" next ctx
-          | Some u -> return! json u.toUserResponse next ctx
+        match returnedUser with
+        | Error _ -> return! RequestErrors.NOT_FOUND $"User not found" next ctx
+        | Ok u -> return! json u.toUserResponse next ctx
 
-
-      with ex ->
-        return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
     }
