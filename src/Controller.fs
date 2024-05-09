@@ -55,10 +55,13 @@ module Controller =
     let deleteRemoveFavoriteArticle =
       routef "/api/articles/%s/favorite" ArticlesService.deleteRemoveFavoriteArticle
 
-    let postTags =
-      route "/api/tags" >=> giraffeAuthorizeEndpoint >=> ArticlesService.postAddTags
+    let postTags = route "/api/tags" >=> ArticlesService.postAddTags
 
     let getTags = route "/api/tags" >=> ArticlesService.getTags
+
+    let getTag = route "/api/tag" >=> ArticlesService.getTag
+
+    let insertTag = route "/api/tag" >=> ArticlesService.insertTag
 
 
     let gets =
@@ -70,7 +73,8 @@ module Controller =
           getFeedArticles
           getArticle
           getArticleComments
-          getTags ]
+          getTags
+          getTag ]
 
     let posts =
       POST
@@ -82,7 +86,8 @@ module Controller =
           postCreateArticle
           postArticleComment
           postAddFavoriteArticle
-          postTags ]
+          postTags
+          insertTag ]
 
     let puts = PUT >=> choose [ putUpdateArticle ]
 

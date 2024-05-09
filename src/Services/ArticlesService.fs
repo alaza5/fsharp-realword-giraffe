@@ -1,6 +1,7 @@
 namespace ArticlesService
 
 module ArticlesService =
+  open System
   open Giraffe
   open Microsoft.AspNetCore.Http
   open Models
@@ -18,34 +19,19 @@ module ArticlesService =
 
   let postCreateArticle (next: HttpFunc) (ctx: HttpContext) =
     task {
-      try
-        let! createArticleRequest = ctx.BindJsonAsync<CreateArticleRequest>()
-        use conn = ctx.GetService<IDbConnection>()
-        let! user = getCurrentlyLoggedInUser ctx
-
-        match user with
-        | Error message -> return! RequestErrors.NOT_FOUND message next ctx
-        | Ok user ->
-          let articleToInsert = createArticleRequest.toDbModel user
-          let! insertedArticle = Repository.createArticle conn articleToInsert
-
-          match insertedArticle with
-          | Error message -> return! ServerErrors.INTERNAL_ERROR message next ctx
-          | Ok article -> return! json article next ctx
-
-      with ex ->
-        return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
+      let! createArticleRequest = ctx.BindJsonAsync<CreateArticleRequest>()
+      let! user = getCurrentlyLoggedInUser ctx
+      let articleToInsert = createArticleRequest.toDbModel user
+      let! insertedArticle = Repository.createArticle articleToInsert
+      return! json insertedArticle next ctx
     }
 
   let putUpdateArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
     printfn $">> slug {slug}"
 
     task {
-      try
-        let! updateArticle = ctx.BindJsonAsync<UpdateArticleRequest>()
-        return! json updateArticle next ctx
-      with ex ->
-        return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
+      let! updateArticle = ctx.BindJsonAsync<UpdateArticleRequest>()
+      return! json updateArticle next ctx
     }
 
   let deleteArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
@@ -67,22 +53,36 @@ module ArticlesService =
 
   let getTags (next: HttpFunc) (ctx: HttpContext) =
     task {
-      try
-        use conn = ctx.GetService<IDbConnection>()
-        let! tags = Repository.getTags conn 
-        let response = tags |> Seq.map _.name
-        return! json response next ctx
-      with ex ->
-        return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
+      let! tags = Repository.getTags
+
+      let response = tags |> Seq.map (fun x -> x.name)
+      return! json response next ctx
     }
 
   let postAddTags (next: HttpFunc) (ctx: HttpContext) =
     task {
-      try
-        let! addTagsRequest = ctx.BindJsonAsync<AddTagsRequest>()
-        use conn = ctx.GetService<IDbConnection>()
-        let response = Repository.addTags conn addTagsRequest
-        return! json response next ctx
-      with ex ->
-        return! RequestErrors.BAD_REQUEST $"Exception: {ex.Message}" next ctx
+      let! addTagsRequest = ctx.BindJsonAsync<AddTagsRequest>()
+      // let listOfTags: DatabaseModels.tags list =
+      //   addTagsRequest.tags |> List.map (fun tag -> { id = Guid.NewGuid(); name = tag })
+      let! response = Repository.addTags (addTagsRequest.tags |> List.toArray)
+
+      return! json response next ctx
+    }
+
+  let getTag (next: HttpFunc) (ctx: HttpContext) =
+    task {
+      let! req = ctx.BindJsonAsync<{| name: string |}>()
+      let! response = Repository.findTag req.name
+      return! json response next ctx
+
+    }
+
+  let insertTag (next: HttpFunc) (ctx: HttpContext) =
+    task {
+      let! req = ctx.BindJsonAsync<{| name: string |}>()
+
+      let data: DatabaseModels.tags = { id = Guid.NewGuid(); name = req.name }
+      let! response = Repository.insertTag data
+      return! json response next ctx
+
     }
