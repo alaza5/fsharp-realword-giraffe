@@ -15,11 +15,11 @@ For more information on how to this works with other frontends/backends, head ov
 
 # How it works
 Used libraries
-  - Dapper.FSharp (sql)
-  - Npgsql (db connection)
+  - Npgsql (db)
   - Microsoft.FSharpLu.Json (deserialization)
   - BCrypt (password hashing)
   - Microsoft.AspNetCore.Authentication.JwtBearer (JWT)
+  
 > Describe the general architecture of your app here
 
 # Getting started

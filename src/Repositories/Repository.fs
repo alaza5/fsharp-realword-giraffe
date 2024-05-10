@@ -2,7 +2,6 @@ namespace Repository
 
 module Repository =
   open System.Data
-  // open Dapper.FSharp.PostgreSQL
   open Models
   open System
   open Npgsql.FSharp
