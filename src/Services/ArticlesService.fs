@@ -62,12 +62,9 @@ module ArticlesService =
   let postAddTags (next: HttpFunc) (ctx: HttpContext) =
     task {
       let! addTagsRequest = ctx.BindJsonAsync<AddTagsRequest>()
-
-
-      let listOfTags: DatabaseModels.tags list =
-        addTagsRequest.tags |> List.map (fun tag -> { id = Guid.NewGuid(); name = tag })
-
-      let! response = Repository.addTags listOfTags
+      // let listOfTags: DatabaseModels.tags list =
+      //   addTagsRequest.tags |> List.map (fun tag -> { id = Guid.NewGuid(); name = tag })
+      let! response = Repository.addTags (addTagsRequest.tags |> List.toArray)
 
       return! json response next ctx
     }

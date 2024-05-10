@@ -143,19 +143,19 @@ module Repository =
         updated_at = read.dateTime "updated_at" })
 
 
-  let addTags (data: DatabaseModels.tags list) : Task<DatabaseModels.tags list> =
+  let addTags (tags: string array) : Task<DatabaseModels.tags list> =
     connectionString
     |> Sql.connect
     |> Sql.query
       @"INSERT INTO tags 
-          (id, name) 
-          VALUES 
-          (@id, @name) 
-          ON CONFLICT (name) 
-          DO NOTHING
-          RETURNING *;
+        (id, name) 
+       VALUES 
+        (@tags) 
+       ON CONFLICT (name) 
+       DO NOTHING
+       RETURNING *;
         "
-    |> Sql.parameters [ "id", Sql.uuid data.id; "name", Sql.string data.name ]
+    |> Sql.parameters [ "tags", Sql.stringArray tags ]
     |> Sql.executeAsync (fun read ->
       { id = read.uuid "id"
         name = read.string "name" })
