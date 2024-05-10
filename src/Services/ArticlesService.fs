@@ -10,21 +10,32 @@ module ArticlesService =
   open UsersService.UsersService
   open ModelsMappers.ResponseToDbMappers
   open ModelsMappers.DbToResponseMappers
+  open System.Threading.Tasks
 
   let getListArticles (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
 
   let getFeedArticles (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
 
   let getArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
+  // task {
+  //   let! insertedArticle = Repository.getArticleBySlug slug
+  //   return! json insertedArticle next ctx
+  // }
+
 
   let postCreateArticle (next: HttpFunc) (ctx: HttpContext) =
     task {
       let! createArticleRequest = ctx.BindJsonAsync<CreateArticleRequest>()
       let! user = getCurrentlyLoggedInUser ctx
       let articleToInsert = createArticleRequest.toDbModel user
-      let! insertedArticle = Repository.createArticle articleToInsert
-      return! json insertedArticle next ctx
+
+      let tagList = createArticleRequest.tagList |> Option.defaultValue [] |> List.toArray
+
+      let! response = Repository.createArticleWithTags articleToInsert tagList
+      return! json response next ctx
     }
+
+
 
   let putUpdateArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
     printfn $">> slug {slug}"
@@ -73,6 +84,15 @@ module ArticlesService =
     task {
       let! req = ctx.BindJsonAsync<{| name: string |}>()
       let! response = Repository.findTag req.name
+      return! json response next ctx
+
+    }
+
+  let getTagForArticle (next: HttpFunc) (ctx: HttpContext) =
+    task {
+      let! req = ctx.BindJsonAsync<{| articleId: Guid |}>()
+      printfn $">> req {req}"
+      let! response = Repository.getTagForArticle req.articleId
       return! json response next ctx
 
     }

@@ -7,6 +7,8 @@ module Repository =
   open Npgsql.FSharp
   open System.Threading.Tasks
 
+  type Params = list<string * SqlValue>
+
   // TODO move it to config
   let connectionString: string =
     Sql.host "localhost"
@@ -142,22 +144,24 @@ module Repository =
         updated_at = read.dateTime "updated_at" })
 
 
-  let addTags (tags: string array) : Task<DatabaseModels.tags list> =
+  let addTags (tags: string array) : Task<int> =
+
+    let tagParams =
+      tags |> Array.map (fun tag -> ("tag", Sql.string tag)) |> Array.toList
+
     connectionString
     |> Sql.connect
     |> Sql.query
-      @"INSERT INTO tags 
-        (id, name) 
-       VALUES 
-        (@tags) 
-       ON CONFLICT (name) 
-       DO NOTHING
-       RETURNING *;
-        "
-    |> Sql.parameters [ "tags", Sql.stringArray tags ]
-    |> Sql.executeAsync (fun read ->
-      { id = read.uuid "id"
-        name = read.string "name" })
+      @"
+      INSERT INTO tags 
+          (name) 
+      VALUES 
+          (@tag) 
+      ON CONFLICT (name) 
+      DO NOTHING
+       "
+    |> Sql.parameters tagParams
+    |> Sql.executeNonQueryAsync
 
 
   let getTags: Task<DatabaseModels.tags list> =
@@ -169,11 +173,11 @@ module Repository =
         name = read.string "name" })
 
 
-  let findTags (tagsToFind: string list) : Task<DatabaseModels.tags list> =
+  let findTags (tagsToFind: string array) : Task<DatabaseModels.tags list> =
     connectionString
     |> Sql.connect
-    |> Sql.query @"SELECT * FROM tags WHERE name IN @tagsToFind"
-    |> Sql.parameters [ "tagsToFind", Sql.stringArray (tagsToFind |> List.toArray) ]
+    |> Sql.query @"SELECT * FROM tags WHERE name = ANY (@tagsToFind)"
+    |> Sql.parameters [ "@tagsToFind", Sql.stringArray tagsToFind ]
     |> Sql.executeAsync (fun read ->
       { id = read.uuid "id"
         name = read.string "name" })
@@ -206,3 +210,109 @@ module Repository =
     |> Sql.executeRowAsync (fun read ->
       { id = read.uuid "id"
         name = read.string "name" })
+
+
+  let addArticlesTags (articleId: Guid) (tagIds: Guid list) : Task<int list> =
+    let parameters: list<Params> =
+      tagIds
+      |> List.map (fun tagId -> [ "articleId", Sql.uuid articleId; "tagId", Sql.uuid tagId ])
+
+    let insertArticleTags =
+      ("INSERT INTO articles_tags (article_id, tag_id) VALUES (@articleId, @tagId)", parameters)
+
+    connectionString
+    |> Sql.connect
+    |> Sql.executeTransactionAsync [ insertArticleTags ]
+
+
+
+  let getTagForArticle (articleId: Guid) : Task<DatabaseModels.tags> =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"SELECT t.id, t.name
+      FROM articles_tags at
+      JOIN tags t ON at.tag_id = t.id
+      WHERE at.article_id = @articleId"
+
+    |> Sql.parameters [ "@articleId", Sql.uuid articleId ]
+    |> Sql.executeRowAsync (fun read ->
+      { id = read.uuid "id"
+        name = read.string "name" })
+
+
+
+  let getTagsForArticle (articleId: Guid) : Task<DatabaseModels.tags list> =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"SELECT tags.id, tags.name
+        FROM articles_tags
+        JOIN tags ON articles_tags.tag_id = tags.id
+        WHERE articles_tags.article_id = @articleId
+       "
+
+    |> Sql.parameters [ "@articleId", Sql.uuid articleId ]
+    |> Sql.executeAsync (fun read ->
+      { id = read.uuid "id"
+        name = read.string "name" })
+
+
+
+
+  let createArticleWithTags (data: DatabaseModels.articles) (tags: string array) : Task<int list> =
+    let articleId = data.id
+
+    // TODO extract it properly
+    let sqlInsertArticle =
+      @"
+      INSERT INTO articles 
+          (id, author_id, slug, title, description, body, created_at, updated_at)
+      VALUES 
+          (@id, @author_id, @slug, @title, @description, @body, @created_at, @updated_at)
+      "
+
+    let insertArticleParam: Params list =
+      [ [ "id", Sql.uuid articleId
+          "author_id", Sql.uuid data.author_id
+          "slug", Sql.string data.slug
+          "title", Sql.string data.title
+          "description", Sql.string data.description
+          "body", Sql.string data.body
+          "created_at", Sql.date data.created_at
+          "updated_at", Sql.date data.updated_at ] ]
+
+    let insertArticleTags = (sqlInsertArticle, insertArticleParam)
+
+    // TODO extract it properly
+    let sqlInsertTags =
+      @"
+      INSERT INTO tags 
+          (name) 
+      VALUES 
+          (@tag) 
+      ON CONFLICT (name) 
+      DO NOTHING
+       "
+
+    let tagParams: Params list =
+      tags |> Array.map (fun tag -> [ "tag", Sql.string tag ]) |> Array.toList
+
+    let insertTags = (sqlInsertTags, tagParams)
+
+    let sqlInsertArticlesTags =
+      @"
+      INSERT INTO articles_tags (article_id, tag_id)
+      SELECT @articleId AS article_id, id AS tag_id
+      FROM tags
+      WHERE name = ANY (@tagsToFind);
+      "
+
+    let insertArticlesTagsParams =
+      [ [ "tagsToFind", Sql.stringArray tags; "articleId", Sql.uuid articleId ] ]
+
+    let insertArticlesTags = (sqlInsertArticlesTags, insertArticlesTagsParams)
+
+    connectionString
+    |> Sql.connect
+    |> Sql.executeTransactionAsync [ insertArticleTags; insertTags; insertArticlesTags ]

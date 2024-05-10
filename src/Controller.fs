@@ -36,7 +36,12 @@ module Controller =
     let getListArticles = route "/api/articles" >=> ArticlesService.getListArticles
     let getFeedArticles = route "/api/articles/feed" >=> ArticlesService.getFeedArticles
     let getArticle = routef "/api/articles/%s" ArticlesService.getArticle
-    let postCreateArticle = route "/api/articles" >=> ArticlesService.postCreateArticle
+
+    let postCreateArticle =
+      route "/api/articles"
+      >=> giraffeAuthorizeEndpoint
+      >=> ArticlesService.postCreateArticle
+
     let putUpdateArticle = routef "/api/articles/%s" ArticlesService.putUpdateArticle
     let deleteArticle = routef "/api/articles/%s" ArticlesService.deleteArticle
 
@@ -63,6 +68,8 @@ module Controller =
 
     let insertTag = route "/api/tag" >=> ArticlesService.insertTag
 
+    let getTagsForArticles =
+      route "/api/article/tags" >=> ArticlesService.getTagForArticle
 
     let gets =
       GET
@@ -74,7 +81,8 @@ module Controller =
           getArticle
           getArticleComments
           getTags
-          getTag ]
+          getTag
+          getTagsForArticles ]
 
     let posts =
       POST

@@ -24,9 +24,7 @@ module UsersService =
       let model = request.toDbModel
       let! user = Repository.registerUser model
       return! json user.toUserResponse next ctx
-
     }
-
 
   let postLoginUser (next: HttpFunc) (ctx: HttpContext) =
     task {
