@@ -59,6 +59,10 @@ module Controller =
 
     let getTags = route "/api/tags" >=> ArticlesService.getTags
 
+    let getTag = route "/api/tag" >=> ArticlesService.getTag
+
+    let insertTag = route "/api/tag" >=> ArticlesService.insertTag
+
 
     let gets =
       GET
@@ -69,7 +73,8 @@ module Controller =
           getFeedArticles
           getArticle
           getArticleComments
-          getTags ]
+          getTags
+          getTag ]
 
     let posts =
       POST
@@ -81,7 +86,8 @@ module Controller =
           postCreateArticle
           postArticleComment
           postAddFavoriteArticle
-          postTags ]
+          postTags
+          insertTag ]
 
     let puts = PUT >=> choose [ putUpdateArticle ]
 

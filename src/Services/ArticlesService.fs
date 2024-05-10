@@ -1,6 +1,7 @@
 namespace ArticlesService
 
 module ArticlesService =
+  open System
   open Giraffe
   open Microsoft.AspNetCore.Http
   open Models
@@ -19,19 +20,10 @@ module ArticlesService =
   let postCreateArticle (next: HttpFunc) (ctx: HttpContext) =
     task {
       let! createArticleRequest = ctx.BindJsonAsync<CreateArticleRequest>()
-      use conn = ctx.GetService<IDbConnection>()
       let! user = getCurrentlyLoggedInUser ctx
-
-      match user with
-      | Error message -> return! RequestErrors.NOT_FOUND message next ctx
-      | Ok user ->
-        let articleToInsert = createArticleRequest.toDbModel user
-        let! insertedArticle = Repository.createArticle conn articleToInsert
-
-        match insertedArticle with
-        | Error message -> return! ServerErrors.INTERNAL_ERROR message next ctx
-        | Ok article -> return! json article next ctx
-
+      let articleToInsert = createArticleRequest.toDbModel user
+      let! insertedArticle = Repository.createArticle articleToInsert
+      return! json insertedArticle next ctx
     }
 
   let putUpdateArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
@@ -61,20 +53,39 @@ module ArticlesService =
 
   let getTags (next: HttpFunc) (ctx: HttpContext) =
     task {
-      use conn = ctx.GetService<IDbConnection>()
-      let! tags = Repository.getTags conn
+      let! tags = Repository.getTags
 
-      match tags with
-      | Ok result ->
-        let response = result |> Seq.map (fun x -> x.name)
-        return! json response next ctx
-      | Error ex -> return! ServerErrors.INTERNAL_ERROR $"Exception: {ex}" next ctx
+      let response = tags |> Seq.map (fun x -> x.name)
+      return! json response next ctx
     }
 
   let postAddTags (next: HttpFunc) (ctx: HttpContext) =
     task {
       let! addTagsRequest = ctx.BindJsonAsync<AddTagsRequest>()
-      use conn = ctx.GetService<IDbConnection>()
-      let response = Repository.addTags conn addTagsRequest
+
+
+      let listOfTags: DatabaseModels.tags list =
+        addTagsRequest.tags |> List.map (fun tag -> { id = Guid.NewGuid(); name = tag })
+
+      let! response = Repository.addTags listOfTags
+
       return! json response next ctx
+    }
+
+  let getTag (next: HttpFunc) (ctx: HttpContext) =
+    task {
+      let! req = ctx.BindJsonAsync<{| name: string |}>()
+      let! response = Repository.findTag req.name
+      return! json response next ctx
+
+    }
+
+  let insertTag (next: HttpFunc) (ctx: HttpContext) =
+    task {
+      let! req = ctx.BindJsonAsync<{| name: string |}>()
+
+      let data: DatabaseModels.tags = { id = Guid.NewGuid(); name = req.name }
+      let! response = Repository.insertTag data
+      return! json response next ctx
+
     }

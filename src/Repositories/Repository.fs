@@ -2,99 +2,208 @@ namespace Repository
 
 module Repository =
   open System.Data
-  open Dapper.FSharp.PostgreSQL
-  open Dapper
+  // open Dapper.FSharp.PostgreSQL
   open Models
   open System
-  open DapperExtensions.DapperExtensions
-  open System.Collections.Generic
+  open Npgsql.FSharp
+  open System.Threading.Tasks
+
+  // TODO move it to config
+  let connectionString: string =
+    Sql.host "localhost"
+    |> Sql.port 5432
+    |> Sql.database "fsharp_giraffe_database"
+    |> Sql.username "myuser"
+    |> Sql.password "mypassword"
+    |> Sql.formatConnectionString
+
+  let registerUser (data: DatabaseModels.users) : Task<DatabaseModels.users> =
+    printfn $">> connectionString {connectionString}"
+
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"INSERT INTO users
+          (id, email, username, password, bio, image, created_at, updated_at)
+        VALUES
+          (@id, @Email, @username, @password, @bio, @image, @created_at, @updated_at)
+        RETURNING *"
+    |> Sql.parameters
+      [ "id", Sql.uuid data.id
+        "email", Sql.string data.email
+        "username", Sql.string data.username
+        "bio", Sql.stringOrNone data.bio
+        "password", Sql.string data.password
+        "image", Sql.stringOrNone data.image
+        "created_at", Sql.date data.created_at
+        "updated_at", Sql.date data.updated_at ]
+    |> Sql.executeRowAsync (fun read ->
+      { id = read.uuid "id"
+        email = read.string "email"
+        username = read.string "username"
+        bio = read.stringOrNone "bio"
+        password = read.string "password"
+        image = read.stringOrNone "image"
+        created_at = read.dateTime "created_at"
+        updated_at = read.dateTime "updated_at" })
 
 
-  let sqlInsertUser =
-    @"INSERT INTO users (id, email, username, password, bio, image, created_at, updated_at) VALUES (@id, @Email, @username, @password, @bio, @image, @created_at, @updated_at);"
-  // RETURNING *;
+  let fetchCurrentUser (email: string) : Task<DatabaseModels.users> =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"
+        SELECT 
+            id, email, username, bio, password, image, created_at, updated_at
+        FROM 
+            users 
+        WHERE 
+            email = @email
+        "
+    |> Sql.parameters [ "email", Sql.string email ]
+    |> Sql.executeRowAsync (fun read ->
+      { id = read.uuid "id"
+        email = read.string "email"
+        username = read.string "username"
+        bio = read.stringOrNone "bio"
+        password = read.string "password"
+        image = read.stringOrNone "image"
+        created_at = read.dateTime "created_at"
+        updated_at = read.dateTime "updated_at" })
 
-  let registerUser (conn: IDbConnection) (data: DatabaseModels.users) =
-    printfn $">> data {data}"
-    // let dictionary = new Dictionary<string, object>
-    // {
-    //     { "@ProductId", 1 }
-    // };
-
-
-    // let data2 =
-    //   {| id = data.id
-    //      email = data.email
-    //      username = data.username
-    //      password = data.password
-    //      bio = data.bio
-    //      image = data.image
-    //      created_at = data.created_at
-    //      updated_at = data.updated_at
-
-    //   |}
-
-    // let parameters = DynamicParameters(data2)
-    // let dictionary = dict [ "@Email", "xd" ]
-    // let parameters = DynamicParameters(dictionary)
-
-    conn.Execute(sqlInsertUser, data)
-  // conn.ExecuteAsync<DatabaseModels.users>(sqlInsertUser, data)
-  // conn.QuerySingleAsyncResult<DatabaseModels.users>(sqlInsertUser, data)
-  // conn.ExecuteAsync<DatabaseModels.users>(sqlInsertUser, data)
-  // conn.QuerySingleAsyncResult<DatabaseModels.users>(sqlInsertUser, {| email = "lol" |})
-
-
-
-  let private sqlGetUserByEmail = @"SELECT * FROM users WHERE email = @email"
-
-  let fetchCurrentUser (conn: IDbConnection) (email: string) =
-    conn.QuerySingleAsyncResult<DatabaseModels.users>(sqlGetUserByEmail, {| email = email |})
-
-
-
-  let private sqlUpdateUser =
-    @"UPDATE users SET id = @id, email = @email, username = @username, password = @password, bio = @bio, image = @image, created_at = @created_at, updated_at = @updated_at WHERE email = @currentUserEmail"
 
   let updateUser
-    (conn: IDbConnection)
     (currentUserEmail: string)
-    (updatedUser: DatabaseModels.users)
-    =
-    let param =
-      {| updatedUser with
-          currentUserEmail = currentUserEmail |}
+    (data: DatabaseModels.users)
+    : Task<DatabaseModels.users> =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"UPDATE users 
+          SET 
+            id = @id, 
+            email = @Email, 
+            username = @username, 
+            password = @password, 
+            bio = @bio, 
+            image = @image, 
+            created_at = @created_at, 
+            updated_at = @updated_at 
+          WHERE 
+            email = @CurrentUserEmail
+        "
+    |> Sql.parameters
+      [ "id", Sql.uuid data.id
+        "Email", Sql.string data.email
+        "username", Sql.string data.username
+        "password", Sql.string data.password
+        "bio", Sql.stringOrNone data.bio
+        "image", Sql.stringOrNone data.image
+        "created_at", Sql.date data.created_at
+        "updated_at", Sql.date data.updated_at
+        "CurrentUserEmail", Sql.string currentUserEmail ]
+    |> Sql.executeRowAsync (fun read ->
+      { id = read.uuid "id"
+        email = read.string "email"
+        username = read.string "username"
+        bio = read.stringOrNone "bio"
+        password = read.string "password"
+        image = read.stringOrNone "image"
+        created_at = read.dateTime "created_at"
+        updated_at = read.dateTime "updated_at" })
 
-    conn.QuerySingleAsyncResult<DatabaseModels.users>(sqlUpdateUser, param)
+
+  let createArticle (data: DatabaseModels.articles) : Task<DatabaseModels.articles> =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"INSERT INTO articles 
+          id, author_id, slug, title, description, body, created_at, updated_at
+          VALUES 
+          @id, @author_id, @slug, @title, @description, @body, @created_at, @updated_at
+          RETURNING *
+        "
+    |> Sql.parameters
+      [ "id", Sql.uuid data.id
+        "author_id", Sql.uuid data.author_id
+        "slug", Sql.string data.slug
+        "title", Sql.string data.title
+        "description", Sql.string data.description
+        "body", Sql.string data.body
+        "created_at", Sql.date data.created_at
+        "updated_at", Sql.date data.updated_at ]
+    |> Sql.executeRowAsync (fun read ->
+      { id = read.uuid "id"
+        author_id = read.uuid "author_id"
+        slug = read.string "slug"
+        title = read.string "title"
+        description = read.string "description"
+        body = read.string "body"
+        created_at = read.dateTime "created_at"
+        updated_at = read.dateTime "updated_at" })
 
 
-
-  let sqlCreateArticle =
-    @"INSERT INTO articles (id, author_id, slug, title, description, body, created_at, updated_at) VALUES (@id, @author_id, @slug, @title, @description, @body, @created_at, @updated_at)"
-
-  let createArticle (conn: IDbConnection) (article: DatabaseModels.articles) =
-    conn.QuerySingleAsyncResult<DatabaseModels.articles>(sqlUpdateUser, article)
-
-
-
-  let sqlAddTags =
-    @"INSERT INTO tags (id, name) VALUES (@id, @name) ON CONFLICT (name) DO NOTHING;"
-
-  let addTags (conn: IDbConnection) (tagsRequest: AddTagsRequest) =
-    let listOfTags =
-      tagsRequest.tags |> List.map (fun tag -> {| id = Guid.NewGuid(); name = tag |})
-
-    conn.QuerySingleAsyncResult<DatabaseModels.tags>(sqlUpdateUser, listOfTags)
-
-
-  let sqlGetTags = "SELECT * FROM tags"
-
-  let getTags (conn: IDbConnection) =
-    conn.QueryAsyncResult<DatabaseModels.tags>(sqlGetTags)
+  let addTags (data: DatabaseModels.tags list) : Task<DatabaseModels.tags list> =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"INSERT INTO tags 
+          (id, name) 
+          VALUES 
+          (@id, @name) 
+          ON CONFLICT (name) 
+          DO NOTHING
+          RETURNING *;
+        "
+    |> Sql.parameters [ "id", Sql.uuid data.id; "name", Sql.string data.name ]
+    |> Sql.executeAsync (fun read ->
+      { id = read.uuid "id"
+        name = read.string "name" })
 
 
-  let sqlFindInTags = sprintf "SELECT * FROM tags WHERE name IN @tagsToFind"
+  let getTags: Task<DatabaseModels.tags list> =
+    connectionString
+    |> Sql.connect
+    |> Sql.query @"SELECT * FROM tags"
+    |> Sql.executeAsync (fun read ->
+      { id = read.uuid "id"
+        name = read.string "name" })
 
-  let findTags (conn: IDbConnection) (tagsToFind: string list) =
-    let data = {| tagsToFind = tagsToFind |}
-    conn.QuerySingleAsync<DatabaseModels.tags>(sqlFindInTags, data)
+
+  let findTags (tagsToFind: string list) : Task<DatabaseModels.tags list> =
+    connectionString
+    |> Sql.connect
+    |> Sql.query @"SELECT * FROM tags WHERE name IN @tagsToFind"
+    |> Sql.parameters [ "tagsToFind", Sql.stringArray (tagsToFind |> List.toArray) ]
+    |> Sql.executeAsync (fun read ->
+      { id = read.uuid "id"
+        name = read.string "name" })
+
+
+  let findTag (name: string) : Task<DatabaseModels.tags> =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"SELECT * 
+        FROM tags 
+        WHERE name = @name
+      "
+    |> Sql.parameters [ "name", Sql.string name ]
+    |> Sql.executeRowAsync (fun read ->
+      { id = read.uuid "id"
+        name = read.string "name" })
+
+
+  let insertTag (tag: DatabaseModels.tags) : Task<DatabaseModels.tags> =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"
+        INSERT INTO tags (id, name) 
+        VALUES (@id, @name) 
+        RETURNING *
+        "
+    |> Sql.parameters [ "id", Sql.uuid tag.id; "name", Sql.string tag.name ]
+    |> Sql.executeRowAsync (fun read ->
+      { id = read.uuid "id"
+        name = read.string "name" })
