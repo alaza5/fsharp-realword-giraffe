@@ -14,7 +14,7 @@ module UsersService =
     task {
       let userId = ctx.User.FindFirst(ClaimTypes.NameIdentifier)
       let currentUserEmail = userId.Value
-      return! Repository.fetchCurrentUser currentUserEmail
+      return! Repository.getUserByEmail currentUserEmail
     }
 
   let postRegisterUser (next: HttpFunc) (ctx: HttpContext) =
@@ -22,14 +22,14 @@ module UsersService =
       // TODO validation and better mapping?
       let! request = ctx.BindJsonAsync<RegisterRequest>()
       let model = request.toDbModel
-      let! user = Repository.registerUser model
+      let! user = Repository.createAndGetUser model
       return! json user.toUserResponse next ctx
     }
 
   let postLoginUser (next: HttpFunc) (ctx: HttpContext) =
     task {
       let! request = ctx.BindJsonAsync<LoginRequest>()
-      let! user = Repository.fetchCurrentUser request.email
+      let! user = Repository.getUserByEmail request.email
 
       let passwordCorrect = Hashing.verifyPassword request.password user.password
 

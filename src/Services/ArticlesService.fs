@@ -64,8 +64,7 @@ module ArticlesService =
 
   let getTags (next: HttpFunc) (ctx: HttpContext) =
     task {
-      let! tags = Repository.getTags
-
+      let! tags = Repository.getAllTags
       let response = tags |> Seq.map (fun x -> x.name)
       return! json response next ctx
     }
@@ -73,36 +72,6 @@ module ArticlesService =
   let postAddTags (next: HttpFunc) (ctx: HttpContext) =
     task {
       let! addTagsRequest = ctx.BindJsonAsync<AddTagsRequest>()
-      // let listOfTags: DatabaseModels.tags list =
-      //   addTagsRequest.tags |> List.map (fun tag -> { id = Guid.NewGuid(); name = tag })
-      let! response = Repository.addTags (addTagsRequest.tags |> List.toArray)
-
+      let! response = Repository.addTags addTagsRequest.tags
       return! json response next ctx
-    }
-
-  let getTag (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! req = ctx.BindJsonAsync<{| name: string |}>()
-      let! response = Repository.findTag req.name
-      return! json response next ctx
-
-    }
-
-  let getTagForArticle (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! req = ctx.BindJsonAsync<{| articleId: Guid |}>()
-      printfn $">> req {req}"
-      let! response = Repository.getTagForArticle req.articleId
-      return! json response next ctx
-
-    }
-
-  let insertTag (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! req = ctx.BindJsonAsync<{| name: string |}>()
-
-      let data: DatabaseModels.tags = { id = Guid.NewGuid(); name = req.name }
-      let! response = Repository.insertTag data
-      return! json response next ctx
-
     }
