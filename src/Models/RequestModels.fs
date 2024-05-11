@@ -40,3 +40,11 @@ type AddTagsRequest = { tags: string list }
 
 [<CLIMutable>]
 type GetTagIdsRequest = { tags: string list }
+
+// TODO
+// favorited = ctx.TryGetQueryStringValue "favorited"
+type GetArticlesQueryParams =
+  { tag: string option
+    author: string option
+    limit: int64 option
+    offset: int64 option }

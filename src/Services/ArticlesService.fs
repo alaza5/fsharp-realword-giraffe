@@ -11,10 +11,22 @@ module ArticlesService =
   open ModelsMappers.ResponseToDbMappers
   open ModelsMappers.DbToResponseMappers
   open System.Threading.Tasks
+  open Helpers
+
+
 
   let getListArticles (next: HttpFunc) (ctx: HttpContext) =
     task {
-      let! data = Repository.getArticlesWithUsersAndTags
+
+      let queryParams: GetArticlesQueryParams =
+        { tag = ctx.TryGetQueryStringValue "tag"
+          author = ctx.TryGetQueryStringValue "author"
+          limit = ctx.TryGetQueryStringValue "limit" |> Option.bind Helpers.stringToInt
+          offset = ctx.TryGetQueryStringValue "offset" |> Option.bind Helpers.stringToInt }
+
+      printfn $">> queryParams {queryParams}"
+
+      let! data = Repository.getArticlesWithUsersAndTags queryParams
 
       let responseList =
         data

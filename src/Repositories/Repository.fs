@@ -295,7 +295,10 @@ module Repository =
         created_at = read.dateTime "created_at"
         updated_at = read.dateTime "updated_at" })
 
-  let getArticlesWithUsersAndTags: Task<DatabaseModels.ArticleUserTags list> =
+  // https://stackoverflow.com/a/64223435
+  let getArticlesWithUsersAndTags
+    (queryParams: GetArticlesQueryParams)
+    : Task<DatabaseModels.ArticleUserTags list> =
     connectionString
     |> Sql.connect
     |> Sql.query
@@ -304,7 +307,7 @@ module Repository =
         SELECT 
             at.article_id,
             JSON_AGG(t.name) AS tags
-        FROM  articles_tags AS at 
+        FROM articles_tags AS at 
         join tags AS t ON t.id = at.tag_id
         GROUP BY at.article_id
       )
@@ -317,8 +320,12 @@ module Repository =
       JOIN 
           users AS u ON a.author_id = u.id 
       JOIN 
-          tag_array ON tag_array.article_id = a.id;
+          tag_array ON tag_array.article_id = a.id
+
+      WHERE (@author::text IS NULL OR u.username = @author)
         "
+    // AND   (@tag::text IS NULL OR u.= @author)
+    |> Sql.parameters [ "@author", Sql.stringOrNone queryParams.author ]
     |> Sql.executeAsync (fun read ->
       // extract the readeres maybe?
       { article = read.fieldValue<DatabaseModels.articles> "article"
