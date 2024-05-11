@@ -118,6 +118,30 @@ module Repository =
         created_at = read.dateTime "created_at"
         updated_at = read.dateTime "updated_at" })
 
+  // maybe extract getting user by different props somehow? will see
+  let getUserById (userId: Guid) : Task<DatabaseModels.users> =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"
+        SELECT 
+            id, email, username, bio, password, image, created_at, updated_at
+        FROM 
+            users 
+        WHERE 
+            id = @id
+        "
+    |> Sql.parameters [ "id", Sql.uuid userId ]
+    |> Sql.executeRowAsync (fun read ->
+      { id = read.uuid "id"
+        email = read.string "email"
+        username = read.string "username"
+        bio = read.stringOrNone "bio"
+        password = read.string "password"
+        image = read.stringOrNone "image"
+        created_at = read.dateTime "created_at"
+        updated_at = read.dateTime "updated_at" })
+
 
   let updateUser
     (currentUserEmail: string)
@@ -177,6 +201,25 @@ module Repository =
         name = read.string "name" })
 
 
+  let getTagsForArticle (articleId: Guid) : Task<DatabaseModels.tags list> =
+    printfn $">> articleId {articleId}"
+
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"
+      SELECT tags.id, tags.name 
+      FROM articles_tags as at
+      LEFT JOIN tags on at.tag_id = tags.id
+      where at.article_id = @articleId
+      "
+    |> Sql.parameters [ "articleId", Sql.uuid articleId ]
+    |> Sql.executeAsync (fun read ->
+      { id = read.uuid "id"
+        name = read.string "name" })
+
+
+
   // let findTags (tagsToFind: string array) : Task<DatabaseModels.tags list> =
   //   connectionString
   //   |> Sql.connect
@@ -228,3 +271,23 @@ module Repository =
       [ (insertArticle.sql, insertArticle.parameters)
         (insertTags.sql, insertTags.parameters)
         insertArticlesTags ]
+
+
+  let getArticleBySlug (slug: string) : Task<DatabaseModels.articles> =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"SELECT *
+        FROM articles
+        WHERE articles.slug = @slug
+      "
+    |> Sql.parameters [ "slug", Sql.string slug ]
+    |> Sql.executeRowAsync (fun read ->
+      { id = read.uuid "id"
+        author_id = read.uuid "author_id"
+        slug = read.string "slug"
+        title = read.string "title"
+        description = read.string "description"
+        body = read.string "body"
+        created_at = read.dateTime "created_at"
+        updated_at = read.dateTime "updated_at" })

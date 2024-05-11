@@ -16,11 +16,16 @@ module ArticlesService =
 
   let getFeedArticles (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
 
-  let getArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
-  // task {
-  //   let! insertedArticle = Repository.getArticleBySlug slug
-  //   return! json insertedArticle next ctx
-  // }
+  // let getArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
+  let getArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
+    task {
+      let! article = Repository.getArticleBySlug slug
+      let! author = Repository.getUserById article.author_id
+      let! tags = Repository.getTagsForArticle article.id
+      printfn $">> tags {tags}"
+      let response = article.toArticleResponse author tags
+      return! json response next ctx
+    }
 
 
   let postCreateArticle (next: HttpFunc) (ctx: HttpContext) =

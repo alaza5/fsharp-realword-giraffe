@@ -62,14 +62,16 @@ module DbToResponseMappers =
 
   type DatabaseModels.articles with
 
-    member this.toArticleResponse(user: DatabaseModels.users) : ArticleResponse =
+    member this.toArticleResponse
+      (user: DatabaseModels.users)
+      (tags: DatabaseModels.tags list)
+      : ArticleResponse =
       let response: ArticleResponse =
         { slug = this.slug
           title = this.title
           description = this.description
           body = this.body
-          //TODO
-          tagList = []
+          tagList = tags |> List.map _.name
           createdAt = this.created_at
           updatedAt = this.updated_at
           //TODO
