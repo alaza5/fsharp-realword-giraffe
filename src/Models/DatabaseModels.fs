@@ -4,6 +4,8 @@ open System
 
 module DatabaseModels =
 
+  // TODO try to rename it to something that make more sence
+  // it's called userS becasue it's how Dapper fsharp worked
   [<CLIMutable>]
   type users =
     { id: Guid
@@ -29,3 +31,9 @@ module DatabaseModels =
   type articles_tags = { article_id: Guid; tag_id: Guid }
 
   type tags = { id: Guid; name: string }
+
+
+  type ArticleUserTags =
+    { article: articles
+      user: users
+      tags: string array }

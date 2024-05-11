@@ -12,7 +12,18 @@ module ArticlesService =
   open ModelsMappers.DbToResponseMappers
   open System.Threading.Tasks
 
-  let getListArticles (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
+  let getListArticles (next: HttpFunc) (ctx: HttpContext) =
+    task {
+      let! data = Repository.getArticlesWithUsersAndTags
+
+      let responseList =
+        data
+        |> List.map (fun x ->
+          let tagList = x.tags |> Array.toList
+          x.article.toArticleResponse x.user tagList)
+
+      return! json responseList next ctx
+    }
 
   let getFeedArticles (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
 
@@ -22,8 +33,8 @@ module ArticlesService =
       let! article = Repository.getArticleBySlug slug
       let! author = Repository.getUserById article.author_id
       let! tags = Repository.getTagsForArticle article.id
-      printfn $">> tags {tags}"
-      let response = article.toArticleResponse author tags
+      let tagNames = tags |> List.map (fun x -> x.name)
+      let response = article.toArticleResponse author tagNames
       return! json response next ctx
     }
 

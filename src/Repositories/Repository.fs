@@ -56,6 +56,9 @@ module Sqls =
 
 
 module Repository =
+  open Npgsql
+  // Fix this
+  NpgsqlConnection.GlobalTypeMapper.EnableDynamicJson() |> ignore
 
   // TODO move it to config
   let connectionString: string =
@@ -291,3 +294,33 @@ module Repository =
         body = read.string "body"
         created_at = read.dateTime "created_at"
         updated_at = read.dateTime "updated_at" })
+
+  let getArticlesWithUsersAndTags: Task<DatabaseModels.ArticleUserTags list> =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"
+      WITH tag_array AS (
+        SELECT 
+            at.article_id,
+            JSON_AGG(t.name) AS tags
+        FROM  articles_tags AS at 
+        join tags AS t ON t.id = at.tag_id
+        GROUP BY at.article_id
+      )
+      SELECT 
+          to_json(a) as article,
+          to_json(u) as user,
+          tag_array.tags AS tags
+      FROM 
+          articles AS a
+      JOIN 
+          users AS u ON a.author_id = u.id 
+      JOIN 
+          tag_array ON tag_array.article_id = a.id;
+        "
+    |> Sql.executeAsync (fun read ->
+      // extract the readeres maybe?
+      { article = read.fieldValue<DatabaseModels.articles> "article"
+        user = read.fieldValue<DatabaseModels.users> "user"
+        tags = read.stringArray "tags" })
