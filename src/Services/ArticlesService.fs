@@ -34,7 +34,11 @@ module ArticlesService =
           let tagList = x.tags |> Array.toList
           x.article.toArticleResponse x.user tagList)
 
-      return! json responseList next ctx
+      let response: ArticlesResponse =
+        { articles = responseList
+          articlesCount = responseList.Length }
+
+      return! json response next ctx
     }
 
   //TODO need follows
@@ -112,18 +116,29 @@ module ArticlesService =
     task {
       let! request = ctx.BindJsonAsync<AddArticleCommentRequest>()
       let! user = getCurrentlyLoggedInUser ctx
-      let! response = Repository.insertComment slug user.id request.body
-      return! json response next ctx
+      let! comments = Repository.insertComment slug user.id request.body
+      return! json comments next ctx
     }
 
   let getArticleComments (slug: string) (next: HttpFunc) (ctx: HttpContext) =
     task {
-      let! response = Repository.getComments slug
+      let! commentsWithUsers = Repository.getComments slug
+
+      let response =
+        commentsWithUsers
+        |> List.map (fun commentWithUser ->
+          let comment = commentWithUser.comment
+          let author = commentWithUser.user.toAuthorResponse
+          comment.toCommentResponse (author))
+
       return! json response next ctx
     }
 
-  let deleteComment (article: string, commentId: string) (next: HttpFunc) (ctx: HttpContext) =
-    text "ok" next ctx
+  let deleteComment (slug: string, commentId: string) (next: HttpFunc) (ctx: HttpContext) =
+    task {
+      let! response = Repository.deleteComment slug commentId
+      return! json response next ctx
+    }
 
 
   let postAddFavoriteArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx

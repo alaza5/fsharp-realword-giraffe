@@ -44,7 +44,7 @@ type ArticlesResponse =
 
 [<CLIMutable>]
 type CommentResponse =
-  { id: int
+  { id: Guid
     createdAt: DateTime
     updatedAt: DateTime
     body: string

@@ -437,3 +437,19 @@ module Repository =
     |> Sql.executeAsync (fun read ->
       { comment = read.fieldValue<DatabaseModels.comments> "comment"
         user = read.fieldValue<DatabaseModels.users> "user" })
+
+
+  let deleteComment (slug: string) (commentId: string) =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"
+      DELETE 
+      FROM comments c
+      USING articles a 
+      WHERE a.id = c.article_id
+      AND a.slug = @slug
+      AND c.id = @commentId::uuid;
+      "
+    |> Sql.parameters [ "slug", Sql.string slug; "commentId", Sql.string commentId ]
+    |> Sql.executeNonQueryAsync

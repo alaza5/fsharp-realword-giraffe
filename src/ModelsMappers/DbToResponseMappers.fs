@@ -107,3 +107,16 @@ module DbToResponseMappers =
           updated_at = DateTime.Now }
 
       response
+
+  type DatabaseModels.comments with
+
+
+    member this.toCommentResponse(author: AuthorResponse) : CommentResponse =
+      let response: CommentResponse =
+        { id = this.id
+          createdAt = this.created_at
+          updatedAt = this.updated_at
+          body = this.body
+          author = author }
+
+      response
