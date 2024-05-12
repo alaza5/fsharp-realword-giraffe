@@ -306,7 +306,7 @@ module Repository =
       WITH tag_array AS (
         SELECT 
             at.article_id,
-            JSON_AGG(t.name) AS tags
+            ARRAY_AGG(t.name) AS tags
         FROM articles_tags AS at 
         join tags AS t ON t.id = at.tag_id
         GROUP BY at.article_id
@@ -321,11 +321,16 @@ module Repository =
           users AS u ON a.author_id = u.id 
       JOIN 
           tag_array ON tag_array.article_id = a.id
-
-      WHERE (@author::text IS NULL OR u.username = @author)
-        "
-    // AND   (@tag::text IS NULL OR u.= @author)
-    |> Sql.parameters [ "@author", Sql.stringOrNone queryParams.author ]
+      WHERE 
+          (@author::text IS NULL OR u.username = @author)
+      AND 
+          (@tag::text IS NULL OR @tag::text = ANY(tags))
+      ORDER BY 
+          a.created_at
+     "
+    |> Sql.parameters
+      [ "@author", Sql.stringOrNone queryParams.author
+        "@tag", Sql.stringOrNone queryParams.tag ]
     |> Sql.executeAsync (fun read ->
       // extract the readeres maybe?
       { article = read.fieldValue<DatabaseModels.articles> "article"
