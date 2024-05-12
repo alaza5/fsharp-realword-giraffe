@@ -116,7 +116,11 @@ module ArticlesService =
       return! json response next ctx
     }
 
-  let getArticleComments (slug: string) (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
+  let getArticleComments (slug: string) (next: HttpFunc) (ctx: HttpContext) =
+    task {
+      let! response = Repository.getComments slug
+      return! json response next ctx
+    }
 
   let deleteComment (article: string, commentId: string) (next: HttpFunc) (ctx: HttpContext) =
     text "ok" next ctx

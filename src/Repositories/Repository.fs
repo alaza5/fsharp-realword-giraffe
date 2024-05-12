@@ -416,3 +416,24 @@ module Repository =
         "@slug", Sql.string slug
         "@body", Sql.string body ]
     |> Sql.executeNonQueryAsync
+
+  let getComments (slug: string) : Task<DatabaseModels.CommentsWithAuthors list> =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"
+      SELECT 
+        to_json(c) as comment, to_json(u) as user
+      FROM 
+        comments c
+      LEFT JOIN 
+        articles a on a.id = article_id
+      LEFT JOIN 
+        users u on u.id = c.author_id
+      WHERE 
+        a.slug = @slug
+      "
+    |> Sql.parameters [ "@slug", Sql.string slug ]
+    |> Sql.executeAsync (fun read ->
+      { comment = read.fieldValue<DatabaseModels.comments> "comment"
+        user = read.fieldValue<DatabaseModels.users> "user" })

@@ -43,5 +43,8 @@ module DatabaseModels =
       author_id: Guid
       article_id: Guid
       body: string
-      created_at: DateTimeOffset
-      updated_at: DateTimeOffset }
+      created_at: DateTime
+      updated_at: DateTime }
+
+
+  type CommentsWithAuthors = { comment: comments; user: users }
