@@ -11,7 +11,7 @@ module Controller =
   open Microsoft.AspNetCore.Authentication.JwtBearer
 
 
-  let giraffeAuthorizeEndpoint: HttpFunc -> HttpContext -> HttpFuncResult =
+  let auth: HttpFunc -> HttpContext -> HttpFuncResult =
     let chall = challenge JwtBearerDefaults.AuthenticationScheme
     requiresAuthentication chall
 
@@ -21,11 +21,9 @@ module Controller =
     let postRegisterUser = route "/api/users" >=> UsersService.postRegisterUser
     let postLoginUser = route "/api/users/login" >=> UsersService.postLoginUser
 
-    let getUser =
-      route "/api/user" >=> giraffeAuthorizeEndpoint >=> UsersService.getCurrentUser
+    let getUser = route "/api/user" >=> auth >=> UsersService.getCurrentUser
 
-    let postUpdateUser =
-      route "/api/user" >=> giraffeAuthorizeEndpoint >=> UsersService.postUpdateUser
+    let postUpdateUser = route "/api/user" >=> auth >=> UsersService.postUpdateUser
 
     let getProfile = routef "/api/user/%s" ProfilesService.getProfile
     let postFollowUser = routef "/api/profiles/%s/follow" ProfilesService.postFollowUser
@@ -38,9 +36,7 @@ module Controller =
     let getArticle = routef "/api/articles/%s" ArticlesService.getArticle
 
     let postCreateArticle =
-      route "/api/articles"
-      >=> giraffeAuthorizeEndpoint
-      >=> ArticlesService.postCreateArticle
+      route "/api/articles" >=> auth >=> ArticlesService.postCreateArticle
 
     let putUpdateArticle = routef "/api/articles/%s" ArticlesService.putUpdateArticle
     let deleteArticle = routef "/api/articles/%s" ArticlesService.deleteArticle
@@ -84,13 +80,17 @@ module Controller =
           postFollowUser
           postCreateArticle
           postArticleComment
-          postAddFavoriteArticle
+          (auth >=> postAddFavoriteArticle)
           postTags ]
 
     let puts = PUT >=> choose [ putUpdateArticle ]
 
     let deletes =
       DELETE
-      >=> choose [ deleteFollowUser; deleteArticle; deleteComment; deleteRemoveFavoriteArticle ]
+      >=> choose
+        [ deleteFollowUser
+          deleteArticle
+          deleteComment
+          (auth >=> deleteRemoveFavoriteArticle) ]
 
     choose [ gets; posts; puts; deletes; defaultHandler ]
