@@ -397,3 +397,22 @@ module Repository =
       "
     |> Sql.parameters [ "slug", Sql.string slug ]
     |> Sql.executeNonQueryAsync
+
+  let insertComment (slug: string) (userId: Guid) (body: string) =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"
+      INSERT INTO comments (author_id, article_id, body) 
+      VALUES 
+        (
+        @userId,
+        (SELECT id FROM articles a WHERE a.slug = @slug LIMIT 1),
+        @body
+        )
+      "
+    |> Sql.parameters
+      [ "@userId", Sql.uuid userId
+        "@slug", Sql.string slug
+        "@body", Sql.string body ]
+    |> Sql.executeNonQueryAsync

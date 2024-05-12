@@ -108,10 +108,15 @@ module ArticlesService =
       return! json articles next ctx
     }
 
-  let postArticleComment (slug: string) (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
+  let postArticleComment (slug: string) (next: HttpFunc) (ctx: HttpContext) =
+    task {
+      let! request = ctx.BindJsonAsync<AddArticleCommentRequest>()
+      let! user = getCurrentlyLoggedInUser ctx
+      let! response = Repository.insertComment slug user.id request.body
+      return! json response next ctx
+    }
 
   let getArticleComments (slug: string) (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
-
 
   let deleteComment (article: string, commentId: string) (next: HttpFunc) (ctx: HttpContext) =
     text "ok" next ctx

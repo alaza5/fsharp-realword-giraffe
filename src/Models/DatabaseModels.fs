@@ -38,8 +38,6 @@ module DatabaseModels =
       user: users
       tags: string array }
 
-
-
   type comments =
     { id: Guid
       author_id: Guid
