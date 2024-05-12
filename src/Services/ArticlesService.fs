@@ -44,15 +44,6 @@ module ArticlesService =
   //TODO need follows
   let getFeedArticles (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
 
-  // let getArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
-  //   task {
-  //     let! article = Repository.getArticleBySlug slug
-  //     let! author = Repository.getUserById article.author_id
-  //     let! tags = Repository.getTagsForArticle article.id
-  //     let tagNames = tags |> List.map (fun x -> x.name)
-  //     let response = article.toArticleResponse author tagNames
-  //     return! json response next ctx
-  //   }
 
   let getArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
     task {
@@ -141,18 +132,20 @@ module ArticlesService =
     }
 
 
-  // let postAddFavoriteArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
   let postAddFavoriteArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
     task {
-      // TODO probably can just pass email and not user
+      // probably can just pass email and not user
       let! user = getCurrentlyLoggedInUser ctx
       let! response = Repository.addFavoriteArticle user.id slug
       return! json response next ctx
     }
 
   let deleteRemoveFavoriteArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
-    text "ok" next ctx
-
+    task {
+      let! user = getCurrentlyLoggedInUser ctx
+      let! response = Repository.removeFavoriteArticle user.id slug
+      return! json response next ctx
+    }
 
   let getTags (next: HttpFunc) (ctx: HttpContext) =
     task {

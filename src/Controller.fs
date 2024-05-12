@@ -87,10 +87,7 @@ module Controller =
 
     let deletes =
       DELETE
-      >=> choose
-        [ deleteFollowUser
-          deleteArticle
-          deleteComment
-          (auth >=> deleteRemoveFavoriteArticle) ]
+      >=> auth
+      >=> choose [ deleteFollowUser; deleteArticle; deleteComment; deleteRemoveFavoriteArticle ]
 
     choose [ gets; posts; puts; deletes; defaultHandler ]

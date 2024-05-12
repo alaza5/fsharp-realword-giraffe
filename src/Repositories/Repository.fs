@@ -462,13 +462,31 @@ module Repository =
       INSERT INTO favorites
           (article_id, user_id)
       SELECT 
-        a.id, @userId::uuid
+        a.id, @userId
       FROM
           articles a
       WHERE
           a.slug = @slug
       ON CONFLICT (article_id, user_id) 
       DO NOTHING
+      "
+    |> Sql.parameters [ "@slug", Sql.string slug; "@userId", Sql.uuid userId ]
+    |> Sql.executeNonQueryAsync
+
+  let removeFavoriteArticle (userId: Guid) (slug: string) =
+    printfn $">> (slug {slug}"
+    printfn $">> userId {userId}"
+
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"
+      DELETE 
+      FROM favorites f
+      USING articles a 
+      WHERE a.id = f.article_id
+      AND a.slug = @slug
+      AND f.user_id = @userId
       "
     |> Sql.parameters [ "@slug", Sql.string slug; "@userId", Sql.uuid userId ]
     |> Sql.executeNonQueryAsync
