@@ -385,3 +385,15 @@ module Repository =
         "@created_at", Sql.date data.created_at
         "@updated_at", Sql.date data.updated_at ]
     |> Sql.executeNonQueryAsync
+
+
+  let deleteArticle (slug: string) =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"
+      DELETE FROM articles
+      WHERE articles.slug = @slug
+      "
+    |> Sql.parameters [ "slug", Sql.string slug ]
+    |> Sql.executeNonQueryAsync

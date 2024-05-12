@@ -37,7 +37,7 @@ module ArticlesService =
       return! json responseList next ctx
     }
 
-  // need follows
+  //TODO need follows
   let getFeedArticles (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
 
   // let getArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
@@ -102,7 +102,11 @@ module ArticlesService =
         | None -> RequestErrors.NOT_FOUND "Article not found" next ctx
     }
 
-  let deleteArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
+  let deleteArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
+    task {
+      let! articles = Repository.deleteArticle slug
+      return! json articles next ctx
+    }
 
   let postArticleComment (slug: string) (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
 
