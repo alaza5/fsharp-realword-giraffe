@@ -17,12 +17,14 @@ module ArticlesService =
 
   let getListArticles (next: HttpFunc) (ctx: HttpContext) =
     task {
-
-      let queryParams: GetArticlesQueryParams =
-        { tag = ctx.TryGetQueryStringValue "tag"
-          author = ctx.TryGetQueryStringValue "author"
-          limit = ctx.TryGetQueryStringValue "limit" |> Option.bind Helpers.stringToInt
-          offset = ctx.TryGetQueryStringValue "offset" |> Option.bind Helpers.stringToInt }
+      let queryParams =
+        Models.articlesFilters
+        |> Models.withTag (ctx.TryGetQueryStringValue "tag")
+        |> Models.withAuthor (ctx.TryGetQueryStringValue "author")
+        |> Models.withLimit (ctx.TryGetQueryStringValue "limit" |> Option.bind Helpers.stringToInt)
+        |> Models.withOffset (
+          ctx.TryGetQueryStringValue "offset" |> Option.bind Helpers.stringToInt
+        )
 
       printfn $">> queryParams {queryParams}"
 
@@ -37,17 +39,32 @@ module ArticlesService =
       return! json responseList next ctx
     }
 
+  // need follows
   let getFeedArticles (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
 
-  // let getArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
+  // let getArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
+  //   task {
+  //     let! article = Repository.getArticleBySlug slug
+  //     let! author = Repository.getUserById article.author_id
+  //     let! tags = Repository.getTagsForArticle article.id
+  //     let tagNames = tags |> List.map (fun x -> x.name)
+  //     let response = article.toArticleResponse author tagNames
+  //     return! json response next ctx
+  //   }
+
   let getArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
     task {
-      let! article = Repository.getArticleBySlug slug
-      let! author = Repository.getUserById article.author_id
-      let! tags = Repository.getTagsForArticle article.id
-      let tagNames = tags |> List.map (fun x -> x.name)
-      let response = article.toArticleResponse author tagNames
-      return! json response next ctx
+      let queryParams =
+        Models.articlesFilters
+        |> Models.withSlug (Some slug)
+        |> Models.withLimit (Some 1)
+
+      let! articles = Repository.getArticlesWithUsersAndTags queryParams
+
+      return!
+        match articles |> List.tryHead with
+        | Some x -> json x next ctx
+        | None -> RequestErrors.NOT_FOUND "Not found" next ctx
     }
 
 

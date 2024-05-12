@@ -57,6 +57,7 @@ module Sqls =
 
 module Repository =
   open Npgsql
+  open Models.Models
   // Fix this
   NpgsqlConnection.GlobalTypeMapper.EnableDynamicJson() |> ignore
 
@@ -297,7 +298,8 @@ module Repository =
 
   // https://stackoverflow.com/a/64223435
   let getArticlesWithUsersAndTags
-    (queryParams: GetArticlesQueryParams)
+    (queryParams: GetArticlesFilters)
+    // TODO kind of sucks but no default/optional parameters in fsharp?
     : Task<DatabaseModels.ArticleUserTags list> =
     connectionString
     |> Sql.connect
@@ -324,13 +326,19 @@ module Repository =
       WHERE 
           (@author::text IS NULL OR u.username = @author)
       AND 
+          (@slug::text IS NULL OR a.slug = @slug)
+      AND 
           (@tag::text IS NULL OR @tag::text = ANY(tags))
       ORDER BY 
           a.created_at
+      LIMIT
+          @limit
      "
     |> Sql.parameters
       [ "@author", Sql.stringOrNone queryParams.author
-        "@tag", Sql.stringOrNone queryParams.tag ]
+        "@slug", Sql.stringOrNone queryParams.slug
+        "@tag", Sql.stringOrNone queryParams.tag
+        "@limit", Sql.int64OrNone queryParams.limit ]
     |> Sql.executeAsync (fun read ->
       // extract the readeres maybe?
       { article = read.fieldValue<DatabaseModels.articles> "article"
