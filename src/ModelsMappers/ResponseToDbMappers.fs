@@ -1,11 +1,12 @@
 namespace ModelsMappers
 
 
-open Models
-open InternalSecurity
 
 module ResponseToDbMappers =
+  open Models
+  open InternalSecurity
   open System
+  open Helpers
 
   type RegisterRequest with
 
@@ -25,10 +26,7 @@ module ResponseToDbMappers =
   type CreateArticleRequest with
 
     member this.toDbModel(user: DatabaseModels.users) =
-      let generatedSlug =
-        this.title.Trim().ToLower().Replace(@"\s+", "-")
-        + "-"
-        + Guid.NewGuid().ToString() // sadge no pipe
+      let generatedSlug = Helpers.generateSlug this.title
 
       let article: DatabaseModels.articles =
         { id = Guid.NewGuid()

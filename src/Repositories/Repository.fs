@@ -54,6 +54,16 @@ module Sqls =
       parameters = insertArticleParam }
 
 
+  let readArticleRow (read: RowReader) : DatabaseModels.articles =
+    { id = read.uuid "id"
+      author_id = read.uuid "author_id"
+      slug = read.string "slug"
+      title = read.string "title"
+      description = read.string "description"
+      body = read.string "body"
+      created_at = read.dateTime "created_at"
+      updated_at = read.dateTime "updated_at" }
+
 
 module Repository =
   open Npgsql
@@ -165,7 +175,8 @@ module Repository =
             created_at = @created_at, 
             updated_at = @updated_at 
           WHERE 
-            email = @CurrentUserEmail
+            email = @currentUserEmail
+          RETURNING *
         "
     |> Sql.parameters
       [ "id", Sql.uuid data.id
@@ -176,7 +187,7 @@ module Repository =
         "image", Sql.stringOrNone data.image
         "created_at", Sql.date data.created_at
         "updated_at", Sql.date data.updated_at
-        "CurrentUserEmail", Sql.string currentUserEmail ]
+        "currentUserEmail", Sql.string currentUserEmail ]
     |> Sql.executeRowAsync (fun read ->
       { id = read.uuid "id"
         email = read.string "email"
@@ -277,6 +288,7 @@ module Repository =
         insertArticlesTags ]
 
 
+  // could change it to get by GetArticlesFilters
   let getArticleBySlug (slug: string) : Task<DatabaseModels.articles> =
     connectionString
     |> Sql.connect
@@ -284,23 +296,18 @@ module Repository =
       @"SELECT *
         FROM articles
         WHERE articles.slug = @slug
+        LIMIT 1
       "
     |> Sql.parameters [ "slug", Sql.string slug ]
-    |> Sql.executeRowAsync (fun read ->
-      { id = read.uuid "id"
-        author_id = read.uuid "author_id"
-        slug = read.string "slug"
-        title = read.string "title"
-        description = read.string "description"
-        body = read.string "body"
-        created_at = read.dateTime "created_at"
-        updated_at = read.dateTime "updated_at" })
+    |> Sql.executeRowAsync Sqls.readArticleRow
 
   // https://stackoverflow.com/a/64223435
   let getArticlesWithUsersAndTags
-    (queryParams: GetArticlesFilters)
+    (filters: GetArticlesFilters)
     // TODO kind of sucks but no default/optional parameters in fsharp?
     : Task<DatabaseModels.ArticleUserTags list> =
+    printfn $">> queryParams {filters}"
+
     connectionString
     |> Sql.connect
     |> Sql.query
@@ -316,12 +323,12 @@ module Repository =
       SELECT 
           to_json(a) as article,
           to_json(u) as user,
-          tag_array.tags AS tags
+          COALESCE(tag_array.tags, ARRAY[]::text[]) AS tags
       FROM 
           articles AS a
       JOIN 
           users AS u ON a.author_id = u.id 
-      JOIN 
+      LEFT JOIN 
           tag_array ON tag_array.article_id = a.id
       WHERE 
           (@author::text IS NULL OR u.username = @author)
@@ -335,12 +342,46 @@ module Repository =
           @limit
      "
     |> Sql.parameters
-      [ "@author", Sql.stringOrNone queryParams.author
-        "@slug", Sql.stringOrNone queryParams.slug
-        "@tag", Sql.stringOrNone queryParams.tag
-        "@limit", Sql.int64OrNone queryParams.limit ]
+      [ "@author", Sql.stringOrNone filters.author
+        "@slug", Sql.stringOrNone filters.slug
+        "@tag", Sql.stringOrNone filters.tag
+        "@limit", Sql.int64OrNone filters.limit ]
     |> Sql.executeAsync (fun read ->
       // extract the readeres maybe?
       { article = read.fieldValue<DatabaseModels.articles> "article"
         user = read.fieldValue<DatabaseModels.users> "user"
         tags = read.stringArray "tags" })
+
+
+
+  //  could be done by UPDATE SET COALESCE(@title, title)
+  let updateArticle (data: DatabaseModels.articles) =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"
+      UPDATE articles 
+      SET 
+        author_id = @author_id,
+        slug = @slug,
+        title = @title,
+        description = @description,
+        body = @body,
+        created_at = @created_at,
+        updated_at = @updated_at 
+      WHERE 
+        id = @id
+      RETURNING *
+       "
+    // TODO doesnt this need checking if author is the same?
+    // AND author_id = @authorId
+    |> Sql.parameters
+      [ "@id", Sql.uuid data.id
+        "@author_id", Sql.uuid data.author_id
+        "@slug", Sql.string data.slug
+        "@title", Sql.string data.title
+        "@description", Sql.string data.description
+        "@body", Sql.string data.body
+        "@created_at", Sql.date data.created_at
+        "@updated_at", Sql.date data.updated_at ]
+    |> Sql.executeNonQueryAsync

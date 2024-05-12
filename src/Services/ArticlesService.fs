@@ -17,7 +17,7 @@ module ArticlesService =
 
   let getListArticles (next: HttpFunc) (ctx: HttpContext) =
     task {
-      let queryParams =
+      let filters =
         Models.articlesFilters
         |> Models.withTag (ctx.TryGetQueryStringValue "tag")
         |> Models.withAuthor (ctx.TryGetQueryStringValue "author")
@@ -26,9 +26,7 @@ module ArticlesService =
           ctx.TryGetQueryStringValue "offset" |> Option.bind Helpers.stringToInt
         )
 
-      printfn $">> queryParams {queryParams}"
-
-      let! data = Repository.getArticlesWithUsersAndTags queryParams
+      let! data = Repository.getArticlesWithUsersAndTags filters
 
       let responseList =
         data
@@ -54,17 +52,18 @@ module ArticlesService =
 
   let getArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
     task {
-      let queryParams =
+      let filters =
         Models.articlesFilters
         |> Models.withSlug (Some slug)
         |> Models.withLimit (Some 1)
 
-      let! articles = Repository.getArticlesWithUsersAndTags queryParams
+      let! articles = Repository.getArticlesWithUsersAndTags filters
+      printfn $">> articles {articles}"
 
       return!
         match articles |> List.tryHead with
         | Some x -> json x next ctx
-        | None -> RequestErrors.NOT_FOUND "Not found" next ctx
+        | None -> RequestErrors.NOT_FOUND "Article not found" next ctx
     }
 
 
@@ -83,11 +82,24 @@ module ArticlesService =
 
 
   let putUpdateArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
-    printfn $">> slug {slug}"
-
     task {
-      let! updateArticle = ctx.BindJsonAsync<UpdateArticleRequest>()
-      return! json updateArticle next ctx
+      let! updateArticleRequest = ctx.BindJsonAsync<UpdateArticleRequest>()
+      let! article = Repository.getArticleBySlug slug
+      let updatedArticle = article.updateArticle updateArticleRequest
+
+      let! _ = Repository.updateArticle updatedArticle
+
+      let filters =
+        Models.articlesFilters
+        |> Models.withSlug (Some updatedArticle.slug)
+        |> Models.withLimit (Some 1)
+
+      let! articles = Repository.getArticlesWithUsersAndTags filters
+
+      return!
+        match articles |> List.tryHead with
+        | Some x -> json x next ctx
+        | None -> RequestErrors.NOT_FOUND "Article not found" next ctx
     }
 
   let deleteArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx

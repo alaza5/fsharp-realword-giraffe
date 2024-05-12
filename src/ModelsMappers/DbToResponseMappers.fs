@@ -1,12 +1,13 @@
 namespace ModelsMappers
 
 
-open Models
-open System
 
 
 module DbToResponseMappers =
   open InternalSecurity
+  open Helpers
+  open Models
+  open System
 
   type DatabaseModels.users with
 
@@ -80,5 +81,29 @@ module DbToResponseMappers =
           //TODO
           favoritesCount = 0
           author = user.toAuthorResponse }
+
+      response
+
+    member this.updateArticle(updateRequest: UpdateArticleRequest) : DatabaseModels.articles =
+      let title = updateRequest.title |> Option.defaultValue this.title
+      let description = updateRequest.description |> Option.defaultValue this.description
+      let body = updateRequest.body |> Option.defaultValue this.body
+
+
+      let slug =
+        match updateRequest.title with
+        | Some newTitle -> Helpers.generateSlug newTitle
+        // | Some _ -> this.slug
+        | None -> this.slug
+
+      let response: DatabaseModels.articles =
+        { id = this.id
+          author_id = this.author_id
+          slug = slug
+          title = title
+          description = description
+          body = body
+          created_at = this.created_at
+          updated_at = DateTime.Now }
 
       response
