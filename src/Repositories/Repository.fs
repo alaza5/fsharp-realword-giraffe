@@ -453,3 +453,22 @@ module Repository =
       "
     |> Sql.parameters [ "slug", Sql.string slug; "commentId", Sql.string commentId ]
     |> Sql.executeNonQueryAsync
+
+  let addFavoriteArticle (userId: Guid) (slug: string) =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"
+      INSERT INTO favorites
+          (article_id, user_id)
+      SELECT 
+        a.id, @userId::uuid
+      FROM
+          articles a
+      WHERE
+          a.slug = @slug
+      ON CONFLICT (article_id, user_id) 
+      DO NOTHING
+      "
+    |> Sql.parameters [ "@slug", Sql.string slug; "@userId", Sql.uuid userId ]
+    |> Sql.executeNonQueryAsync
