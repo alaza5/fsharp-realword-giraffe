@@ -65,7 +65,7 @@ module ArticlesService =
   let postCreateArticle (next: HttpFunc) (ctx: HttpContext) =
     task {
       let! createArticleRequest = ctx.BindJsonAsync<CreateArticleRequest>()
-      let! user = getCurrentlyLoggedInUser ctx
+      let! user = getLoggedInUser ctx
       let articleToInsert = createArticleRequest.toDbModel user
 
       let tagList = createArticleRequest.tagList |> Option.defaultValue [] |> List.toArray
@@ -106,7 +106,7 @@ module ArticlesService =
   let postArticleComment (slug: string) (next: HttpFunc) (ctx: HttpContext) =
     task {
       let! request = ctx.BindJsonAsync<AddArticleCommentRequest>()
-      let! user = getCurrentlyLoggedInUser ctx
+      let! user = getLoggedInUser ctx
       let! comments = Repository.insertComment slug user.id request.body
       return! json comments next ctx
     }
@@ -135,14 +135,14 @@ module ArticlesService =
   let postAddFavoriteArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
     task {
       // probably can just pass email and not user
-      let! user = getCurrentlyLoggedInUser ctx
+      let! user = getLoggedInUser ctx
       let! response = Repository.addFavoriteArticle user.id slug
       return! json response next ctx
     }
 
   let deleteRemoveFavoriteArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
     task {
-      let! user = getCurrentlyLoggedInUser ctx
+      let! user = getLoggedInUser ctx
       let! response = Repository.removeFavoriteArticle user.id slug
       return! json response next ctx
     }

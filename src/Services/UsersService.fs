@@ -10,7 +10,7 @@ module UsersService =
   open InternalSecurity
   open System.Security.Claims
 
-  let getCurrentlyLoggedInUser (ctx: HttpContext) =
+  let getLoggedInUser (ctx: HttpContext) =
     task {
       let userId = ctx.User.FindFirst(ClaimTypes.NameIdentifier)
       let currentUserEmail = userId.Value
@@ -44,13 +44,13 @@ module UsersService =
 
   let getCurrentUser (next: HttpFunc) (ctx: HttpContext) =
     task {
-      let! user = getCurrentlyLoggedInUser ctx
+      let! user = getLoggedInUser ctx
       return! json user.toUserResponse next ctx
     }
 
   let postUpdateUser (next: HttpFunc) (ctx: HttpContext) =
     task {
-      let! user = getCurrentlyLoggedInUser ctx
+      let! user = getLoggedInUser ctx
       let! updateRequest = ctx.BindJsonAsync<UpdateUserRequest>()
 
       let updatedUser = user.updateUser (updateRequest)

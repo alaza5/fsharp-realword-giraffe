@@ -64,6 +64,17 @@ module Sqls =
       created_at = read.dateTime "created_at"
       updated_at = read.dateTime "updated_at" }
 
+  let readUserRow (read: RowReader) : DatabaseModels.users =
+    { id = read.uuid "id"
+      email = read.string "email"
+      username = read.string "username"
+      bio = read.stringOrNone "bio"
+      password = read.string "password"
+      image = read.stringOrNone "image"
+      created_at = read.dateTime "created_at"
+      updated_at = read.dateTime "updated_at" }
+
+
 
 module Repository =
   open Npgsql
@@ -87,7 +98,7 @@ module Repository =
       @"INSERT INTO users
           (id, email, username, password, bio, image, created_at, updated_at)
         VALUES
-          (@id, @Email, @username, @password, @bio, @image, @created_at, @updated_at)
+          (@id, @email, @username, @password, @bio, @image, @created_at, @updated_at)
         RETURNING *"
     |> Sql.parameters
       [ "id", Sql.uuid data.id
@@ -98,63 +109,46 @@ module Repository =
         "image", Sql.stringOrNone data.image
         "created_at", Sql.date data.created_at
         "updated_at", Sql.date data.updated_at ]
-    |> Sql.executeRowAsync (fun read ->
-      { id = read.uuid "id"
-        email = read.string "email"
-        username = read.string "username"
-        bio = read.stringOrNone "bio"
-        password = read.string "password"
-        image = read.stringOrNone "image"
-        created_at = read.dateTime "created_at"
-        updated_at = read.dateTime "updated_at" })
+    |> Sql.executeRowAsync Sqls.readUserRow
 
 
+  // maybe extract getting user by different props somehow? will see
   let getUserByEmail (email: string) : Task<DatabaseModels.users> =
     connectionString
     |> Sql.connect
     |> Sql.query
       @"
-        SELECT 
-            id, email, username, bio, password, image, created_at, updated_at
-        FROM 
-            users 
-        WHERE 
-            email = @email
-        "
+        SELECT *
+        FROM users 
+        WHERE email = @email
+       "
     |> Sql.parameters [ "email", Sql.string email ]
-    |> Sql.executeRowAsync (fun read ->
-      { id = read.uuid "id"
-        email = read.string "email"
-        username = read.string "username"
-        bio = read.stringOrNone "bio"
-        password = read.string "password"
-        image = read.stringOrNone "image"
-        created_at = read.dateTime "created_at"
-        updated_at = read.dateTime "updated_at" })
+    |> Sql.executeRowAsync Sqls.readUserRow
 
-  // maybe extract getting user by different props somehow? will see
   let getUserById (userId: Guid) : Task<DatabaseModels.users> =
     connectionString
     |> Sql.connect
     |> Sql.query
       @"
-        SELECT 
-            id, email, username, bio, password, image, created_at, updated_at
-        FROM 
-            users 
-        WHERE 
-            id = @id
-        "
+        SELECT *
+        FROM users
+        WHERE id = @id
+       "
     |> Sql.parameters [ "id", Sql.uuid userId ]
-    |> Sql.executeRowAsync (fun read ->
-      { id = read.uuid "id"
-        email = read.string "email"
-        username = read.string "username"
-        bio = read.stringOrNone "bio"
-        password = read.string "password"
-        image = read.stringOrNone "image"
-        created_at = read.dateTime "created_at"
-        updated_at = read.dateTime "updated_at" })
+    |> Sql.executeRowAsync Sqls.readUserRow
+
+
+  let getUserByUsername (username: string) : Task<DatabaseModels.users> =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"
+        SELECT *
+        FROM users 
+        WHERE username = @username
+       "
+    |> Sql.parameters [ "@username", Sql.string username ]
+    |> Sql.executeRowAsync Sqls.readUserRow
 
 
   let updateUser
@@ -188,15 +182,7 @@ module Repository =
         "created_at", Sql.date data.created_at
         "updated_at", Sql.date data.updated_at
         "currentUserEmail", Sql.string currentUserEmail ]
-    |> Sql.executeRowAsync (fun read ->
-      { id = read.uuid "id"
-        email = read.string "email"
-        username = read.string "username"
-        bio = read.stringOrNone "bio"
-        password = read.string "password"
-        image = read.stringOrNone "image"
-        created_at = read.dateTime "created_at"
-        updated_at = read.dateTime "updated_at" })
+    |> Sql.executeRowAsync Sqls.readUserRow
 
 
   let addTags (tags: string list) : Task<int list> =
@@ -489,4 +475,67 @@ module Repository =
       AND f.user_id = @userId
       "
     |> Sql.parameters [ "@slug", Sql.string slug; "@userId", Sql.uuid userId ]
+    |> Sql.executeNonQueryAsync
+
+
+  // let addFollow (userId: Guid) (followerUsername: string) =
+  //   connectionString
+  //   |> Sql.connect
+  //   |> Sql.query
+  //     @"
+  //     INSERT INTO follows
+  //       (user_id, follower_id)
+  //     VALUES
+  //       (
+  //       (SELECT id FROM users u WHERE u.username = @followerUsername LIMIT 1),
+  //       @userId
+  //       )
+  //     "
+  //   |> Sql.parameters
+  //     [ "@userId", Sql.uuid userId; "@followerUsername", Sql.string followerUsername ]
+  //   |> Sql.executeNonQueryAsync
+
+  // let removeFollow (userId: Guid) (followerUsername: string) =
+  //   connectionString
+  //   |> Sql.connect
+  //   |> Sql.query
+  //     @"
+  //     DELETE FROM follows
+  //     WHERE
+  //       user_id = (SELECT id FROM users WHERE username = @followerUsername LIMIT 1)
+  //     AND
+  //       follower_id = @userId;
+  //     "
+  //   |> Sql.parameters
+  //     [ "@userId", Sql.uuid userId; "@followerUsername", Sql.string followerUsername ]
+  //   |> Sql.executeNonQueryAsync
+
+
+  let addFollow (userId: Guid) (followingId: Guid) =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"
+      INSERT INTO follows
+        (user_id, following_id)
+      VALUES 
+        (@userId, @followingId)
+      ON CONFLICT (user_id, following_id)
+      DO NOTHING
+      "
+    |> Sql.parameters [ "@userId", Sql.uuid userId; "@followingId", Sql.uuid followingId ]
+    |> Sql.executeNonQueryAsync
+
+  let removeFollow (userId: Guid) (followingId: Guid) =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"
+      DELETE FROM follows
+      WHERE 
+        user_id = @userId
+      AND 
+        following_id = @followingId
+      "
+    |> Sql.parameters [ "@userId", Sql.uuid userId; "@followingId", Sql.uuid followingId ]
     |> Sql.executeNonQueryAsync
