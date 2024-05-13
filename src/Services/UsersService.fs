@@ -1,59 +1,59 @@
-namespace UsersService
+namespace Services
 
 module UsersService =
   open Giraffe
-  open Microsoft.AspNetCore.Http
   open Models
   open Repository
   open ModelsMappers.ResponseToDbMappers
   open ModelsMappers.DbToResponseMappers
-  open InternalSecurity
-  open System.Security.Claims
-
-  let getLoggedInUser (ctx: HttpContext) =
-    task {
-      let userId = ctx.User.FindFirst(ClaimTypes.NameIdentifier)
-      let currentUserEmail = userId.Value
-      return! Repository.getUserByEmail currentUserEmail
-    }
-
-  let postRegisterUser (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      // TODO validation and better mapping?
-      let! request = ctx.BindJsonAsync<RegisterRequest>()
-      let model = request.toDbModel
-      let! user = Repository.createAndGetUser model
-      return! json user.toUserResponse next ctx
-    }
-
-  let postLoginUser (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! request = ctx.BindJsonAsync<LoginRequest>()
-      let! user = Repository.getUserByEmail request.email
-
-      let passwordCorrect = Hashing.verifyPassword request.password user.password
-
-      let response =
-        match passwordCorrect with
-        | false -> RequestErrors.UNAUTHORIZED "scheme" "realm" "Don't know who you are"
-        | true -> json user.toUserResponse
-
-      return! response next ctx
-    }
+  open Utils
+  open User
 
 
-  let getCurrentUser (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! user = getLoggedInUser ctx
-      return! json user.toUserResponse next ctx
-    }
+  let postRegisterUser (request: RegisterRequest) =
+    fun next ctx ->
+      task {
+        let model = request.toDbModel
+        let! user = UsersRepository.createAndGetUser model
+        return! Successful.CREATED (user.toLoggedUserResponse) next ctx
+      }
 
-  let postUpdateUser (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! user = getLoggedInUser ctx
-      let! updateRequest = ctx.BindJsonAsync<UpdateUserRequest>()
 
-      let updatedUser = user.updateUser (updateRequest)
-      let! returnedUser = Repository.updateUser user.email updatedUser
-      return! json returnedUser.toUserResponse next ctx
-    }
+  let postLoginUser (request: LoginRequest) : HttpHandler =
+    fun next ctx ->
+      task {
+        let! user = UsersRepository.getUserByEmail request.user.email
+
+        let isPassowrdCorrect =
+          Hashing.verifyPassword request.user.password user.password
+
+        return!
+          match isPassowrdCorrect with
+          | false ->
+            RequestErrors.UNAUTHORIZED
+              "scheme"
+              "realm"
+              "Don't know who you are"
+              next
+              ctx
+          | true -> json user.toLoggedUserResponse next ctx
+      }
+
+  let getCurrentUser =
+    fun next ctx ->
+      task {
+        let! user = getLoggedInUser ctx
+        return! json user.toLoggedUserResponse next ctx
+      }
+
+  let postUpdateUser (updateRequest: UpdateUserRequest) : HttpHandler =
+    fun next ctx ->
+      task {
+        let! user = getLoggedInUser ctx
+        let updatedUser = user.updateUser updateRequest
+
+        let! returnedUser =
+          UsersRepository.updateAndReturnUser user.email updatedUser
+
+        return! json returnedUser.toLoggedUserResponse next ctx
+      }

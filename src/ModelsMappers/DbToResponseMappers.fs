@@ -4,52 +4,61 @@ namespace ModelsMappers
 
 
 module DbToResponseMappers =
-  open InternalSecurity
-  open Helpers
+  open Utils
   open Models
   open System
+  open Models.DbTables
 
-  type DatabaseModels.users with
+  type DbTables.UsersTable with
 
-    member this.toUserResponse: UserResponse =
+    member this.toLoggedUserResponse: UserResponse =
       let response: UserResponse =
-        { email = this.email
-          token = JwtHelper.generateToken this.email
-          username = this.username
-          bio = this.bio
-          image = this.image }
+        { user =
+            {| email = this.email
+               token = JwtHelper.generateToken this.email
+               username = this.username
+               bio = this.bio
+               image = this.image |}
+
+        }
 
       response
 
-    member this.toAuthorResponse: AuthorResponse =
+
+    member this.toAuthorResponse
+      (loggedInUserFollowingList: DbTables.UsersTable list)
+      : AuthorResponse =
+      let following =
+        loggedInUserFollowingList |> List.exists (fun user -> user.id = this.id)
+
       let response: AuthorResponse =
         { username = this.username
           bio = this.bio |> Option.defaultValue ""
           image = this.image |> Option.defaultValue ""
-          //TODO
-          following = false }
+          following = following }
 
       response
 
 
-    member this.updateUser(request: UpdateUserRequest) : DatabaseModels.users =
+    member this.updateUser(request: UpdateUserRequest) : DbTables.UsersTable =
+      let user = request.user
 
-      let email = request.email |> Option.defaultValue this.email
-      let username = request.username |> Option.defaultValue this.username
-      let password = request.password |> Option.defaultValue this.password
+      let email = user.email |> Option.defaultValue this.email
+      let username = user.username |> Option.defaultValue this.username
+      let password = user.password |> Option.defaultValue this.password
       let updated_at = DateTime.UtcNow
 
       let bio =
-        match request.bio with
+        match user.bio with
         | Some x -> Some x
         | None -> this.bio
 
       let image =
-        match request.image with
+        match user.image with
         | Some x -> Some x
         | None -> this.image
 
-      let response: DatabaseModels.users =
+      let response: DbTables.UsersTable =
         { this with
             email = email
             username = username
@@ -61,42 +70,27 @@ module DbToResponseMappers =
       response
 
 
-  type DatabaseModels.articles with
+  type DbTables.ArticlesTable with
 
+    member this.updateArticle
+      (updateRequest: UpdateArticleRequest)
+      : DbTables.ArticlesTable =
+      let article = updateRequest.article
 
-    member this.toArticleResponse
-      (user: DatabaseModels.users)
-      (tags: string list)
-      : ArticleResponse =
-      let response: ArticleResponse =
-        { slug = this.slug
-          title = this.title
-          description = this.description
-          body = this.body
-          tagList = tags
-          createdAt = this.created_at
-          updatedAt = this.updated_at
-          //TODO
-          favorited = false
-          //TODO
-          favoritesCount = 0
-          author = user.toAuthorResponse }
+      let title = article.title |> Option.defaultValue this.title
 
-      response
+      let description =
+        article.description |> Option.defaultValue this.description
 
-    member this.updateArticle(updateRequest: UpdateArticleRequest) : DatabaseModels.articles =
-      let title = updateRequest.title |> Option.defaultValue this.title
-      let description = updateRequest.description |> Option.defaultValue this.description
-      let body = updateRequest.body |> Option.defaultValue this.body
+      let body = article.body |> Option.defaultValue this.body
 
 
       let slug =
-        match updateRequest.title with
+        match article.title with
         | Some newTitle -> Helpers.generateSlug newTitle
-        // | Some _ -> this.slug
         | None -> this.slug
 
-      let response: DatabaseModels.articles =
+      let response: DbTables.ArticlesTable =
         { id = this.id
           author_id = this.author_id
           slug = slug
@@ -108,26 +102,60 @@ module DbToResponseMappers =
 
       response
 
-  type DatabaseModels.comments with
+  type DbTables.CommentsTable with
 
 
-    member this.toCommentResponse(author: AuthorResponse) : CommentResponse =
-      let response: CommentResponse =
+    member this.toSingularCommentResponse
+      (author: AuthorResponse)
+      : SingularCommentResponse =
+      let response: SingularCommentResponse =
         { id = this.id
-          createdAt = this.created_at
-          updatedAt = this.updated_at
+          createdAt = this.created_at.ToString(Helpers.DATE_TIME_FORMAT)
+          updatedAt = this.updated_at.ToString(Helpers.DATE_TIME_FORMAT)
           body = this.body
           author = author }
 
       response
 
-  type DatabaseModels.users with
+  type DbTables.UsersTable with
 
-    member this.toProfileResponse(isFollowing: bool) : ProfileResponse =
+    member this.toProfileResponse
+      (loggedInUserFollowingList: DbTables.UsersTable list)
+      : ProfileResponse =
+      let isFollowing =
+        loggedInUserFollowingList |> List.exists (fun user -> user.id = this.id)
+
       let response: ProfileResponse =
-        { username = this.username
-          bio = (this.bio |> Option.defaultValue "")
-          image = (this.image |> Option.defaultValue "")
-          following = isFollowing }
+        { profile =
+            {| username = this.username
+               bio = (this.bio |> Option.defaultValue "")
+               image = (this.image |> Option.defaultValue "")
+               following = isFollowing |} }
+
+      response
+
+  type DbModels.ArticleUserTags with
+
+    member this.toSingularArticleResponse
+      (loggedInUserFollowingList: DbTables.UsersTable list)
+      : SingularArticleResponse =
+
+      let favorited =
+        this.favoritedUsers
+        |> Array.exists (fun username -> this.user.username = username)
+
+      let tags = this.tags |> Array.sort |> Array.toList
+
+      let response: SingularArticleResponse =
+        { slug = this.article.slug
+          title = this.article.title
+          description = this.article.description
+          body = this.article.body
+          tagList = tags
+          createdAt = this.article.created_at.ToString(Helpers.DATE_TIME_FORMAT)
+          updatedAt = this.article.updated_at.ToString(Helpers.DATE_TIME_FORMAT)
+          favorited = favorited
+          favoritesCount = this.favoritedUsers.Length
+          author = this.user.toAuthorResponse loggedInUserFollowingList }
 
       response

@@ -1,93 +1,48 @@
 namespace Controller
 
-open Giraffe
-open Microsoft.AspNetCore.Http
-open UsersService
-open ProfilesService
-open ArticlesService
 
 
 module Controller =
-  open Microsoft.AspNetCore.Authentication.JwtBearer
+  open Giraffe
+  open Microsoft.AspNetCore.Http
 
-
-  let auth: HttpFunc -> HttpContext -> HttpFuncResult =
-    let chall = challenge JwtBearerDefaults.AuthenticationScheme
-    requiresAuthentication chall
-
-  let private defaultHandler = setStatusCode 404 >=> text "Not Found"
+  let private defaultHandler = setStatusCode 404 >=> text "Endpoint Not Found"
 
   let root: HttpFunc -> HttpContext -> HttpFuncResult =
-    let postRegisterUser = route "/api/users" >=> UsersService.postRegisterUser
-    let postLoginUser = route "/api/users/login" >=> UsersService.postLoginUser
-
-    let getUser = route "/api/user" >=> auth >=> UsersService.getCurrentUser
-
-    let postUpdateUser = route "/api/user" >=> auth >=> UsersService.postUpdateUser
-
-    let getProfile = routef "/api/user/%s" ProfilesService.getProfile
-    let postFollowUser = routef "/api/profiles/%s/follow" ProfilesService.postFollowUser
-
-    let deleteFollowUser =
-      routef "/api/profiles/%s/follow" ProfilesService.deleteFollowUser
-
-    let getListArticles = route "/api/articles" >=> ArticlesService.getListArticles
-    let getFeedArticles = route "/api/articles/feed" >=> ArticlesService.getFeedArticles
-    let getArticle = routef "/api/articles/%s" ArticlesService.getArticle
-
-    let postCreateArticle =
-      route "/api/articles" >=> auth >=> ArticlesService.postCreateArticle
-
-    let putUpdateArticle = routef "/api/articles/%s" ArticlesService.putUpdateArticle
-    let deleteArticle = routef "/api/articles/%s" ArticlesService.deleteArticle
-
-    let postArticleComment =
-      routef "/api/articles/%s/comments" ArticlesService.postArticleComment
-
-    let getArticleComments =
-      routef "/api/articles/%s/comments" ArticlesService.getArticleComments
-
-    let deleteComment =
-      routef "/api/articles/%s/comments/%s" ArticlesService.deleteComment
-
-    let postAddFavoriteArticle =
-      routef "/api/articles/%s/favorite" ArticlesService.postAddFavoriteArticle
-
-    let deleteRemoveFavoriteArticle =
-      routef "/api/articles/%s/favorite" ArticlesService.deleteRemoveFavoriteArticle
-
-    let postTags = route "/api/tags" >=> ArticlesService.postAddTags
-
-    let getTags = route "/api/tags" >=> ArticlesService.getTags
-
     let gets =
       GET
       >=> choose
-        [ getUser
-          getProfile
-          getListArticles
-          getFeedArticles
-          getArticle
-          getArticleComments
-          getTags ]
+        [ UsersController.getUser
+          ProfilesController.getProfile
+          ArticlesController.getListArticles
+          ArticlesController.getFeedArticles
+          ArticlesController.getArticle
+          ArticlesController.getArticleComments
+          ArticlesController.getTags ]
 
     let posts =
       POST
       >=> choose
-        [ postLoginUser
-          postRegisterUser
-          postUpdateUser
-          postFollowUser
-          postCreateArticle
-          postArticleComment
-          (auth >=> postAddFavoriteArticle)
-          postTags ]
+        [ UsersController.postLoginUser
+          UsersController.postRegisterUser
+          ProfilesController.postFollowUser
+          ArticlesController.postCreateArticle
+          ArticlesController.postArticleComment
+          ArticlesController.postAddFavoriteArticle
+          // ArticlesController.postTags
+          ]
 
-    let puts = PUT >=> choose [ putUpdateArticle ]
+    let puts =
+      PUT
+      >=> choose
+        [ ArticlesController.putUpdateArticle; UsersController.putUpdateUser ]
 
     let deletes =
       DELETE
-      >=> auth
-      >=> choose [ deleteFollowUser; deleteArticle; deleteComment; deleteRemoveFavoriteArticle ]
+      >=> choose
+        [ ProfilesController.deleteFollowUser
+          ArticlesController.deleteArticle
+          ArticlesController.deleteComment
+          ArticlesController.deleteRemoveFavoriteArticle ]
 
     choose [ gets; posts; puts; deletes; defaultHandler ]

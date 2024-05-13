@@ -11,7 +11,7 @@ open Giraffe
 open Controller
 open Microsoft.AspNetCore.Authentication.JwtBearer
 open Microsoft.IdentityModel.Tokens
-open InternalSecurity
+open Utils
 
 module Config =
   open System.Data
@@ -77,7 +77,7 @@ module Config =
             ValidIssuer = JwtHelper.issuer,
             ValidAudience = JwtHelper.audience,
             IssuerSigningKey =
-              SymmetricSecurityKey(InternalSecurity.JwtHelper.secretByteArray)
+              SymmetricSecurityKey(Utils.JwtHelper.secretByteArray)
           ))
     |> ignore
 
@@ -86,10 +86,10 @@ module Config =
     services
       .AddCors()
       .AddGiraffe()
-      .AddTransient<IDbConnection>(fun serviceProvider ->
-        let settings = serviceProvider.GetService<IConfiguration>()
-        let conn = settings.["DbConnection"]
-        new Npgsql.NpgsqlConnection(conn))
+      // .AddTransient<IDbConnection>(fun serviceProvider ->
+      //   let settings = serviceProvider.GetService<IConfiguration>()
+      //   let conn = settings.["DbConnection"]
+      //   new Npgsql.NpgsqlConnection(conn))
       .AddRouting()
       .AddSingleton<Json.ISerializer>(getSerializer)
     |> ignore

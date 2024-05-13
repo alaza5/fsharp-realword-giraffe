@@ -4,11 +4,12 @@ open System
 
 [<CLIMutable>]
 type UserResponse =
-  { email: string
-    token: string
-    username: string
-    bio: string option
-    image: string option }
+  { user:
+      {| email: string
+         token: string
+         username: string
+         bio: string option
+         image: string option |} }
 
 [<CLIMutable>]
 type AuthorResponse =
@@ -19,36 +20,47 @@ type AuthorResponse =
 
 [<CLIMutable>]
 type ProfileResponse =
-  { username: string
-    bio: string
-    image: string
-    following: bool }
+  { profile:
+      {| username: string
+         bio: string
+         image: string
+         following: bool |} }
 
 [<CLIMutable>]
-type ArticleResponse =
+type SingularArticleResponse =
   { slug: string
     title: string
     description: string
     body: string
     tagList: string list
-    createdAt: DateTime
-    updatedAt: DateTime
+    createdAt: string
+    updatedAt: string
     favorited: bool
     favoritesCount: int
     author: AuthorResponse }
 
 [<CLIMutable>]
+type ArticleResponse = { article: SingularArticleResponse }
+
+[<CLIMutable>]
 type ArticlesResponse =
-  { articles: ArticleResponse list
+  { articles: SingularArticleResponse list
     articlesCount: int }
 
 [<CLIMutable>]
-type CommentResponse =
+type SingularCommentResponse =
   { id: Guid
-    createdAt: DateTime
-    updatedAt: DateTime
+    createdAt: string
+    updatedAt: string
     body: string
     author: AuthorResponse }
+
+[<CLIMutable>]
+type CommentResponse = { comment: SingularCommentResponse }
+
+[<CLIMutable>]
+type CommentsResponse =
+  { comments: SingularCommentResponse list }
 
 [<CLIMutable>]
 type TagsResponse = { tags: string list }

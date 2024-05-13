@@ -19,11 +19,18 @@
   <ItemGroup>
     <Compile Include="src/utils/*" />
     <Compile Include="src/Models/*" />
+    <Compile Include="src/Models/Request/*" />
+    <Compile Include="src/Models/Database/DbTables.fs" />
+    <Compile Include="src/Models/Database/DbModels.fs" />
     <Compile Include="src/ModelsMappers/*" />
-    <Compile Include="src/Repositories/*" />
+    <Compile Include="src/Repositories/Common.fs" />
+    <Compile Include="src/Repositories/UsersRepository.fs" />
+    <Compile Include="src/Repositories/ArticlesRepository.fs" />
+    <Compile Include="src/Services/User.fs" />
     <Compile Include="src/Services/UsersService.fs" />
     <Compile Include="src/Services/ArticlesService.fs" />
     <Compile Include="src/Services/ProfilesService.fs" />
+    <Compile Include="src/Controller/*" />
     <Compile Include="src/Controller.fs" />
     <Compile Include="Config.fs" />
     <Compile Include="Program.fs" />

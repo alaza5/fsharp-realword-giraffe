@@ -7,6 +7,7 @@ services:
       POSTGRES_DB: fsharp_giraffe_database
       POSTGRES_USER: myuser
       POSTGRES_PASSWORD: mypassword
+    command: ["postgres", "-c", "log_statement=all"]
     ports:
       - "5432:5432"
     volumes:

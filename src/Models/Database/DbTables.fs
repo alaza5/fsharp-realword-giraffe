@@ -2,12 +2,9 @@ namespace Models
 
 open System
 
-module DatabaseModels =
-
-  // TODO try to rename it to something that make more sence
-  // it's called userS becasue it's how Dapper fsharp worked
+module DbTables =
   [<CLIMutable>]
-  type users =
+  type UsersTable =
     { id: Guid
       email: string
       username: string
@@ -18,7 +15,7 @@ module DatabaseModels =
       updated_at: DateTime }
 
   [<CLIMutable>]
-  type articles =
+  type ArticlesTable =
     { id: Guid
       author_id: Guid
       slug: string
@@ -28,23 +25,14 @@ module DatabaseModels =
       created_at: DateTime
       updated_at: DateTime }
 
-  type articles_tags = { article_id: Guid; tag_id: Guid }
+  type ArticlesTagsTable = { article_id: Guid; tag_id: Guid }
 
-  type tags = { id: Guid; name: string }
+  type TagsTable = { id: Guid; name: string }
 
-
-  type ArticleUserTags =
-    { article: articles
-      user: users
-      tags: string array }
-
-  type comments =
+  type CommentsTable =
     { id: Guid
       author_id: Guid
       article_id: Guid
       body: string
       created_at: DateTime
       updated_at: DateTime }
-
-
-  type CommentsWithAuthors = { comment: comments; user: users }

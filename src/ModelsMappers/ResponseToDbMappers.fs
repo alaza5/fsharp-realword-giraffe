@@ -4,18 +4,17 @@ namespace ModelsMappers
 
 module ResponseToDbMappers =
   open Models
-  open InternalSecurity
+  open Utils
   open System
-  open Helpers
 
   type RegisterRequest with
 
     member this.toDbModel =
-      let user: DatabaseModels.users =
+      let user: DbTables.UsersTable =
         { id = Guid.NewGuid()
-          email = this.email
-          username = this.username
-          password = Hashing.hashPassword this.password
+          email = this.user.email
+          username = this.user.username
+          password = Hashing.hashPassword this.user.password
           bio = None
           image = None
           created_at = DateTime.UtcNow
@@ -25,16 +24,16 @@ module ResponseToDbMappers =
 
   type CreateArticleRequest with
 
-    member this.toDbModel(user: DatabaseModels.users) =
-      let generatedSlug = Helpers.generateSlug this.title
+    member this.toDbModel(user: DbTables.UsersTable) =
+      let generatedSlug = Helpers.generateSlug this.article.title
 
-      let article: DatabaseModels.articles =
+      let article: DbTables.ArticlesTable =
         { id = Guid.NewGuid()
           author_id = user.id
           slug = generatedSlug
-          title = this.title
-          description = this.description
-          body = this.body
+          title = this.article.title
+          description = this.article.description
+          body = this.article.body
           created_at = DateTime.UtcNow
           updated_at = DateTime.UtcNow }
 

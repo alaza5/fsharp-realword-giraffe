@@ -1,4 +1,4 @@
-namespace InternalSecurity
+namespace Utils
 
 open BCrypt.Net
 open System
@@ -6,6 +6,7 @@ open Microsoft.IdentityModel.Tokens
 open System.Text
 open System.Security.Claims
 open System.IdentityModel.Tokens.Jwt
+open Giraffe
 
 
 module Hashing =
@@ -18,6 +19,9 @@ module Hashing =
     BCrypt.Verify(password, realPassword)
 
 module JwtHelper =
+  open Microsoft.AspNetCore.Http
+  open Microsoft.AspNetCore.Authentication.JwtBearer
+
   let private secret = "spadR2dre#u-ruBrE@TepA&*Uf@UspadR2dre#u-ruBrE@TepA&*Uf@U"
 
   let secretByteArray = Encoding.UTF8.GetBytes(secret)
@@ -52,3 +56,7 @@ module JwtHelper =
     let tokenResult = JwtSecurityTokenHandler().WriteToken(token)
 
     tokenResult
+
+  let auth: HttpFunc -> HttpContext -> HttpFuncResult =
+    let chall = challenge JwtBearerDefaults.AuthenticationScheme
+    requiresAuthentication chall

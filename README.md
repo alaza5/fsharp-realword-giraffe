@@ -24,5 +24,7 @@ Used libraries
 
 # Getting started
 
-> npm install, npm start, etc.
+1. docker compose up
+2. liquibase --changeLogFile=changelog.xml update
+3. dotnet run
 

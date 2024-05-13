@@ -1,189 +1,335 @@
-namespace ArticlesService
+namespace Services
 
 module ArticlesService =
-  open System
   open Giraffe
-  open Microsoft.AspNetCore.Http
   open Models
   open Repository
-  open System.Data
-  open UsersService.UsersService
   open ModelsMappers.ResponseToDbMappers
   open ModelsMappers.DbToResponseMappers
-  open System.Threading.Tasks
-  open Helpers
+  open Utils
+  open User
 
 
 
-  let getListArticles (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let filters =
-        Models.articlesFilters
-        |> Models.withTag (ctx.TryGetQueryStringValue "tag")
-        |> Models.withAuthor (ctx.TryGetQueryStringValue "author")
-        |> Models.withLimit (ctx.TryGetQueryStringValue "limit" |> Option.bind Helpers.stringToInt)
-        |> Models.withOffset (
-          ctx.TryGetQueryStringValue "offset" |> Option.bind Helpers.stringToInt
-        )
-
-      let! data = Repository.getArticlesWithUsersAndTags filters
-
-      let responseList =
-        data
-        |> List.map (fun x ->
-          let tagList = x.tags |> Array.toList
-          x.article.toArticleResponse x.user tagList)
-
-      let response: ArticlesResponse =
-        { articles = responseList
-          articlesCount = responseList.Length }
-
-      return! json response next ctx
-    }
-
-  let getFeedArticles (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! currentUser = getLoggedInUser ctx
-
-      let filters =
-        Models.articlesFilters
-        |> Models.withTag (ctx.TryGetQueryStringValue "tag")
-        |> Models.withAuthor (ctx.TryGetQueryStringValue "author")
-        |> Models.withLimit (ctx.TryGetQueryStringValue "limit" |> Option.bind Helpers.stringToInt)
-        |> Models.withOffset (
-          ctx.TryGetQueryStringValue "offset" |> Option.bind Helpers.stringToInt
-        )
-        |> Models.withUserId (Some currentUser.id)
-
-      let! data = Repository.getArticlesWithUsersAndTags filters
-
-      let responseList =
-        data
-        |> List.map (fun x ->
-          let tagList = x.tags |> Array.toList
-          x.article.toArticleResponse x.user tagList)
-
-      let response: ArticlesResponse =
-        { articles = responseList
-          articlesCount = responseList.Length }
-
-      return! json response next ctx
-
-    }
+  let getListArticles: HttpHandler =
+    fun next ctx ->
+      task {
+        //TODO can't I do tryBindQuery
+        let filters =
+          Models.articlesFilters
+          |> Models.withTagOpt (ctx.TryGetQueryStringValue "tag")
+          |> Models.withAuthorStringOpt (ctx.TryGetQueryStringValue "author")
+          |> Models.withFavoritedUserNameOpt (
+            ctx.TryGetQueryStringValue "favorited"
+          )
+          |> Models.withLimitOpt (
+            ctx.TryGetQueryStringValue "limit"
+            |> Option.bind Helpers.stringToInt
+          )
+          |> Models.withOffsetOpt (
+            ctx.TryGetQueryStringValue "offset"
+            |> Option.bind Helpers.stringToInt
+          )
 
 
-  let getArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let filters =
-        Models.articlesFilters
-        |> Models.withSlug (Some slug)
-        |> Models.withLimit (Some 1)
+        let! data = ArticlesRepository.getArticlesWithUsersAndTags filters
+        let! userWithFollows = getLoggedInUserDataMaybe ctx
 
-      let! articles = Repository.getArticlesWithUsersAndTags filters
-      printfn $">> articles {articles}"
+        let followingList =
+          userWithFollows
+          |> Option.map (fun u -> u.followingList)
+          |> Option.defaultValue []
 
-      return!
+        let responseList =
+          data |> List.map (fun x -> x.toSingularArticleResponse followingList)
+
+        let response: ArticlesResponse =
+          { articles = responseList
+            articlesCount = responseList.Length }
+
+        return! json response next ctx
+      }
+
+  let getFeedArticles: HttpHandler =
+    fun next ctx ->
+      task {
+        let! userData = getLoggedInUserData ctx
+
+        let filters =
+          Models.articlesFilters
+          |> Models.withTagOpt (ctx.TryGetQueryStringValue "tag")
+          |> Models.withAuthorStringOpt (ctx.TryGetQueryStringValue "author")
+          |> Models.withLimitOpt (
+            ctx.TryGetQueryStringValue "limit"
+            |> Option.bind Helpers.stringToInt
+          )
+          |> Models.withOffsetOpt (
+            ctx.TryGetQueryStringValue "offset"
+            |> Option.bind Helpers.stringToInt
+          )
+          |> Models.withFollowedUserName (userData.user.username)
+
+        let! data = ArticlesRepository.getArticlesWithUsersAndTags filters
+
+        let singularArticleList =
+          data
+          |> List.map (fun x ->
+            x.toSingularArticleResponse userData.followingList)
+
+        let response: ArticlesResponse =
+          { articles = singularArticleList
+            articlesCount = singularArticleList.Length }
+
+        return! json response next ctx
+      }
+
+
+  let getArticleBySlug (slug: string) : HttpHandler =
+    fun next ctx ->
+      task {
+        let filters =
+          Models.articlesFilters |> Models.withSlug slug |> Models.withLimit 1
+
+        let! articles = ArticlesRepository.getArticlesWithUsersAndTags filters
+
         match articles |> List.tryHead with
-        | Some x -> json x next ctx
-        | None -> RequestErrors.NOT_FOUND "Article not found" next ctx
-    }
+        | None -> return! RequestErrors.NOT_FOUND "Article not found" next ctx
+        | Some x ->
+          let! userWithFollows = getLoggedInUserData ctx
+
+          let singularArticle =
+            x.toSingularArticleResponse userWithFollows.followingList
+
+          let response: ArticleResponse = { article = singularArticle }
+          return! json response next ctx
+      }
 
 
-  let postCreateArticle (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! createArticleRequest = ctx.BindJsonAsync<CreateArticleRequest>()
-      let! user = getLoggedInUser ctx
-      let articleToInsert = createArticleRequest.toDbModel user
+  let postCreateArticle
+    (createArticleRequest: CreateArticleRequest)
+    : HttpHandler =
+    fun next ctx ->
+      task {
+        let! userWithFollows = getLoggedInUserData ctx
 
-      let tagList = createArticleRequest.tagList |> Option.defaultValue [] |> List.toArray
+        let articleToInsert =
+          createArticleRequest.toDbModel userWithFollows.user
 
-      let! response = Repository.createArticleWithTags articleToInsert tagList
-      return! json response next ctx
-    }
+        let tagList =
+          createArticleRequest.article.tagList
+          |> Option.defaultValue []
+          |> List.toArray
+
+        let! _ = ArticlesRepository.createArticle articleToInsert tagList
+
+
+        let filters =
+          Models.articlesFilters
+          |> Models.withSlug articleToInsert.slug
+          |> Models.withLimit 1
+
+        let! createdArticles =
+          ArticlesRepository.getArticlesWithUsersAndTags filters
+
+        match createdArticles |> List.tryHead with
+        | None -> return! RequestErrors.NOT_FOUND "Article not found" next ctx
+        | Some article ->
+          let! usersData = getLoggedInUserData ctx
+
+          let singularArticle =
+            article.toSingularArticleResponse usersData.followingList
+
+          let response: ArticleResponse = { article = singularArticle }
+          return! json response next ctx
+      }
 
 
 
-  let putUpdateArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! updateArticleRequest = ctx.BindJsonAsync<UpdateArticleRequest>()
-      let! article = Repository.getArticleBySlug slug
-      let updatedArticle = article.updateArticle updateArticleRequest
+  let putUpdateArticle
+    (slug: string)
+    (updateArticleRequest: UpdateArticleRequest)
+    : HttpHandler =
+    fun next ctx ->
+      task {
+        let! oldArticle = ArticlesRepository.getArticleBySlug slug
+        let newArticle = oldArticle.updateArticle updateArticleRequest
 
-      let! _ = Repository.updateArticle updatedArticle
+        let! rowsAffected = ArticlesRepository.updateArticle newArticle
 
-      let filters =
-        Models.articlesFilters
-        |> Models.withSlug (Some updatedArticle.slug)
-        |> Models.withLimit (Some 1)
+        if rowsAffected = 0 then
+          return! RequestErrors.NOT_FOUND "Article not found" next ctx
+        else
+          let filters =
+            Models.articlesFilters
+            |> Models.withSlug newArticle.slug
+            |> Models.withLimit 1
 
-      let! articles = Repository.getArticlesWithUsersAndTags filters
+          let! updatedArticles =
+            ArticlesRepository.getArticlesWithUsersAndTags filters
 
-      return!
+          match updatedArticles |> List.tryHead with
+          | None -> return! RequestErrors.NOT_FOUND "Article not found" next ctx
+          | Some article ->
+            let! usersData = getLoggedInUserData ctx
+
+            let singularArticle =
+              article.toSingularArticleResponse usersData.followingList
+
+            let response: ArticleResponse = { article = singularArticle }
+            return! json response next ctx
+      }
+
+  let deleteArticle (slug: string) =
+    fun next ctx ->
+      task {
+        let! rowAffected = ArticlesRepository.deleteArticle slug
+
+        match rowAffected with
+        | _ when rowAffected > 0 ->
+          return! Successful.OK "Deleted article" next ctx
+        | _ -> return! RequestErrors.NOT_FOUND "Article not updated" next ctx
+      }
+
+  let postAddArticleComment
+    (slug: string)
+    (request: AddArticleCommentRequest)
+    : HttpHandler =
+    fun next ctx ->
+      task {
+        let! userData = getLoggedInUserData ctx
+        let body = request.comment.body
+
+        printfn $">> slug {slug}"
+        let! article = ArticlesRepository.getArticleBySlug slug
+
+        let! comment =
+          ArticlesRepository.insertAndReturnComment
+            article.id
+            userData.user.id
+            body
+
+        let authorResponse =
+          userData.user.toAuthorResponse (userData.followingList)
+
+        let singularComment = comment.toSingularCommentResponse authorResponse
+        let response: CommentResponse = { comment = singularComment }
+
+        return! json response next ctx
+      }
+
+  let getArticleComments (slug: string) =
+    fun next ctx ->
+      task {
+        let! commentsWithUsers = ArticlesRepository.getCommentsWithAuthors slug
+        let! userWithFollows = getLoggedInUserDataMaybe ctx
+
+        let followingList =
+          userWithFollows
+          |> Option.map (fun u -> u.followingList)
+          |> Option.defaultValue []
+
+        let singularComments =
+          commentsWithUsers
+          |> List.map (fun commentWithUser ->
+            let comment = commentWithUser.comment
+            let author = commentWithUser.user.toAuthorResponse followingList
+            comment.toSingularCommentResponse (author))
+
+        let response: CommentsResponse = { comments = singularComments }
+        return! json response next ctx
+      }
+
+  let deleteComment (slug: string, commentId: string) =
+    fun next ctx ->
+      task {
+
+        let! comments = ArticlesRepository.getCommentsWithAuthors slug
+
+        let commentToDelete =
+          comments
+          |> List.tryFind (fun x -> x.comment.id.ToString() = commentId)
+
+        match commentToDelete with
+        | None -> return! RequestErrors.NOT_FOUND "Comment not found" next ctx
+        | Some commentData ->
+          let! _ =
+            ArticlesRepository.deleteComment
+              slug
+              (commentData.comment.id.ToString())
+
+          let! userData = getLoggedInUserData ctx
+
+          let authorResponse =
+            commentData.user.toAuthorResponse userData.followingList
+
+          let singularCommentResponse =
+            commentData.comment.toSingularCommentResponse authorResponse
+
+
+          let response: CommentResponse = { comment = singularCommentResponse }
+          return! json response next ctx
+      }
+
+
+  let postAddFavoriteArticle (slug: string) =
+    fun next ctx ->
+      task {
+        let! userData = getLoggedInUserData ctx
+        let! _ = ArticlesRepository.addFavoriteArticle userData.user.id slug
+
+        let filters =
+          Models.articlesFilters |> Models.withSlug slug |> Models.withLimit 1
+
+        let! articles = ArticlesRepository.getArticlesWithUsersAndTags filters
+
         match articles |> List.tryHead with
-        | Some x -> json x next ctx
-        | None -> RequestErrors.NOT_FOUND "Article not found" next ctx
-    }
+        | None -> return! RequestErrors.NOT_FOUND "Article not found" next ctx
+        | Some article ->
+          let singularArticle =
+            article.toSingularArticleResponse userData.followingList
 
-  let deleteArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! articles = Repository.deleteArticle slug
-      return! json articles next ctx
-    }
+          let response: ArticleResponse = { article = singularArticle }
+          return! json response next ctx
+      }
 
-  let postArticleComment (slug: string) (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! request = ctx.BindJsonAsync<AddArticleCommentRequest>()
-      let! user = getLoggedInUser ctx
-      let! comments = Repository.insertComment slug user.id request.body
-      return! json comments next ctx
-    }
+  let deleteRemoveFavoriteArticle (slug: string) =
+    fun next ctx ->
+      task {
+        let! userData = getLoggedInUserData ctx
+        let! _ = ArticlesRepository.removeFavoriteArticle userData.user.id slug
 
-  let getArticleComments (slug: string) (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! commentsWithUsers = Repository.getComments slug
-
-      let response =
-        commentsWithUsers
-        |> List.map (fun commentWithUser ->
-          let comment = commentWithUser.comment
-          let author = commentWithUser.user.toAuthorResponse
-          comment.toCommentResponse (author))
-
-      return! json response next ctx
-    }
-
-  let deleteComment (slug: string, commentId: string) (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! response = Repository.deleteComment slug commentId
-      return! json response next ctx
-    }
+        let filters =
+          Models.articlesFilters |> Models.withSlug slug |> Models.withLimit 1
 
 
-  let postAddFavoriteArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      // probably can just pass email and not user
-      let! user = getLoggedInUser ctx
-      let! response = Repository.addFavoriteArticle user.id slug
-      return! json response next ctx
-    }
+        let! articles = ArticlesRepository.getArticlesWithUsersAndTags filters
 
-  let deleteRemoveFavoriteArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! user = getLoggedInUser ctx
-      let! response = Repository.removeFavoriteArticle user.id slug
-      return! json response next ctx
-    }
+        match articles |> List.tryHead with
+        | None -> return! RequestErrors.NOT_FOUND "Article not found" next ctx
+        | Some article ->
+          let singularArticle =
+            article.toSingularArticleResponse userData.followingList
 
-  let getTags (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! tags = Repository.getAllTags
-      let response = tags |> Seq.map (fun x -> x.name)
-      return! json response next ctx
-    }
+          let response: ArticleResponse = { article = singularArticle }
+          return! json response next ctx
+      }
 
-  let postAddTags (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! addTagsRequest = ctx.BindJsonAsync<AddTagsRequest>()
-      let! response = Repository.addTags addTagsRequest.tags
-      return! json response next ctx
-    }
+  let getTags =
+    fun next ctx ->
+      task {
+        let! allTags = ArticlesRepository.getAllTags
+
+        let sortedTags =
+          allTags |> Seq.map (fun x -> x.name) |> Seq.sort |> Seq.toList
+
+        let response: TagsResponse = { tags = sortedTags }
+
+        return! json response next ctx
+      }
+
+// let postAddTags (addTagsRequest: AddTagsRequest) : HttpHandler =
+//   fun next ctx ->
+//     task {
+//       let! response = ArticlesRepository.addTags addTagsRequest.tags
+//       return! json response next ctx
+//     }

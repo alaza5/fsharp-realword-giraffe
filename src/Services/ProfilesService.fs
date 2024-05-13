@@ -1,38 +1,58 @@
-namespace ProfilesService
+namespace Services
 
 module ProfilesService =
   open Giraffe
-  open Microsoft.AspNetCore.Http
-  open UsersService.UsersService
-  open ModelsMappers.ResponseToDbMappers
   open ModelsMappers.DbToResponseMappers
   open Repository
+  open User
 
-  let getProfile (username: string) (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      // can do 1 sql request
-      let! currentUser = getLoggedInUser ctx
-      let! userProfile = Repository.getUserByUsername username
-      let! isFollowing = Repository.isFollowing currentUser.id userProfile.id
-      let response = userProfile.toProfileResponse (isFollowing.count > 0)
+  let getProfile (username: string) =
+    fun next ctx ->
+      task {
+        let! currentUserData = getLoggedInUserDataMaybe ctx
 
-      return! json response next ctx
-    }
+        let currentUserFollowings =
+          currentUserData
+          |> Option.map (fun user -> user.followingList)
+          |> Option.defaultValue []
 
-  let postFollowUser (username: string) (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! currentUser = getLoggedInUser ctx
-      let! toFollow = Repository.getUserByUsername username
+        let! userProfile = UsersRepository.getUserByUsername username
+        let response = userProfile.toProfileResponse currentUserFollowings
 
-      let! response = Repository.addFollow currentUser.id toFollow.id
-      return! json response next ctx
-    }
+        return! json response next ctx
+      }
 
-  let deleteFollowUser (username: string) (next: HttpFunc) (ctx: HttpContext) =
-    task {
-      let! currentUser = getLoggedInUser ctx
-      let! toFollow = Repository.getUserByUsername username
+  let postFollowUser (username: string) =
+    fun next ctx ->
+      task {
+        let! currentUser = getLoggedInUser ctx
+        let! userToFollow = UsersRepository.getUserByUsername username
+        let! _ = UsersRepository.addFollow currentUser.id userToFollow.id
 
-      let! response = Repository.removeFollow currentUser.id toFollow.id
-      return! json response next ctx
-    }
+        let! followedUserProfile = UsersRepository.getUserByUsername username
+
+        let! currentUserFollowings =
+          UsersRepository.getFollowingUsers currentUser.id
+
+        let response =
+          followedUserProfile.toProfileResponse currentUserFollowings
+
+        return! json response next ctx
+      }
+
+  let deleteFollowUser (username: string) =
+    fun next ctx ->
+      task {
+        let! currentUser = getLoggedInUser ctx
+        let! toDeleteFollow = UsersRepository.getUserByUsername username
+        let! _ = UsersRepository.removeFollow currentUser.id toDeleteFollow.id
+
+        let! userProfile = UsersRepository.getUserByUsername username
+
+        let! currentUserFollowings =
+          UsersRepository.getFollowingUsers currentUser.id
+
+        let response = userProfile.toProfileResponse currentUserFollowings
+
+        return! json response next ctx
+      }
