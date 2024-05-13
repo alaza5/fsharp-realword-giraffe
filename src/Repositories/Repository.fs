@@ -539,3 +539,19 @@ module Repository =
       "
     |> Sql.parameters [ "@userId", Sql.uuid userId; "@followingId", Sql.uuid followingId ]
     |> Sql.executeNonQueryAsync
+
+
+  type Count = { count: int64 }
+
+  let isFollowing (userId: Guid) (followingId: Guid) : Task<Count> =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"
+        SELECT COUNT(*)
+        FROM follows
+        WHERE user_id = @followingId
+        AND following_id = @userId
+        "
+    |> Sql.parameters [ "@userId", Sql.uuid userId; "@followingId", Sql.uuid followingId ]
+    |> Sql.executeRowAsync (fun read -> { count = read.int64 "count" })

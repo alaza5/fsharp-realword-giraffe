@@ -120,3 +120,14 @@ module DbToResponseMappers =
           author = author }
 
       response
+
+  type DatabaseModels.users with
+
+    member this.toProfileResponse(isFollowing: bool) : ProfileResponse =
+      let response: ProfileResponse =
+        { username = this.username
+          bio = (this.bio |> Option.defaultValue "")
+          image = (this.image |> Option.defaultValue "")
+          following = isFollowing }
+
+      response
