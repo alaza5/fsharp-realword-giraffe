@@ -41,8 +41,35 @@ module ArticlesService =
       return! json response next ctx
     }
 
-  //TODO need follows
-  let getFeedArticles (next: HttpFunc) (ctx: HttpContext) = text "ok" next ctx
+  let getFeedArticles (next: HttpFunc) (ctx: HttpContext) =
+    task {
+      let! currentUser = getLoggedInUser ctx
+
+      let filters =
+        Models.articlesFilters
+        |> Models.withTag (ctx.TryGetQueryStringValue "tag")
+        |> Models.withAuthor (ctx.TryGetQueryStringValue "author")
+        |> Models.withLimit (ctx.TryGetQueryStringValue "limit" |> Option.bind Helpers.stringToInt)
+        |> Models.withOffset (
+          ctx.TryGetQueryStringValue "offset" |> Option.bind Helpers.stringToInt
+        )
+        |> Models.withUserId (Some currentUser.id)
+
+      let! data = Repository.getArticlesWithUsersAndTags filters
+
+      let responseList =
+        data
+        |> List.map (fun x ->
+          let tagList = x.tags |> Array.toList
+          x.article.toArticleResponse x.user tagList)
+
+      let response: ArticlesResponse =
+        { articles = responseList
+          articlesCount = responseList.Length }
+
+      return! json response next ctx
+
+    }
 
 
   let getArticle (slug: string) (next: HttpFunc) (ctx: HttpContext) =

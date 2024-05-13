@@ -299,13 +299,19 @@ module Repository =
     |> Sql.query
       @"
       WITH tag_array AS (
-        SELECT 
-            at.article_id,
-            ARRAY_AGG(t.name) AS tags
-        FROM articles_tags AS at 
-        join tags AS t ON t.id = at.tag_id
-        GROUP BY at.article_id
+          SELECT 
+              at.article_id,
+              ARRAY_AGG(t.name) AS tags
+          FROM articles_tags AS at 
+          JOIN tags AS t ON t.id = at.tag_id
+          GROUP BY at.article_id
+      ),
+      following_users AS (
+          SELECT following_id
+          FROM follows
+          WHERE user_id = COALESCE(@userId, user_id) OR @userId IS NULL
       )
+
       SELECT 
           to_json(a) as article,
           to_json(u) as user,
@@ -322,6 +328,8 @@ module Repository =
           (@slug::text IS NULL OR a.slug = @slug)
       AND 
           (@tag::text IS NULL OR @tag::text = ANY(tags))
+      AND
+          (@userId IS NULL OR a.author_id IN (SELECT following_id FROM following_users))
       ORDER BY 
           a.created_at
       LIMIT
@@ -331,7 +339,8 @@ module Repository =
       [ "@author", Sql.stringOrNone filters.author
         "@slug", Sql.stringOrNone filters.slug
         "@tag", Sql.stringOrNone filters.tag
-        "@limit", Sql.int64OrNone filters.limit ]
+        "@limit", Sql.int64OrNone filters.limit
+        "@userId", Sql.uuidOrNone filters.userId ]
     |> Sql.executeAsync (fun read ->
       // extract the readeres maybe?
       { article = read.fieldValue<DatabaseModels.articles> "article"
@@ -550,8 +559,22 @@ module Repository =
       @"
         SELECT COUNT(*)
         FROM follows
-        WHERE user_id = @followingId
-        AND following_id = @userId
+        WHERE user_id = @userId
+        AND following_id = @followingId
         "
     |> Sql.parameters [ "@userId", Sql.uuid userId; "@followingId", Sql.uuid followingId ]
     |> Sql.executeRowAsync (fun read -> { count = read.int64 "count" })
+
+
+  let getFollowedUsers (userId: Guid) : Task<DatabaseModels.users> =
+    connectionString
+    |> Sql.connect
+    |> Sql.query
+      @"
+        SELECT u.*
+        FROM follows f
+        LEFT JOIN users u ON u.id = f.following_id
+        where f.user_id = @userId
+        "
+    |> Sql.parameters [ "@userId", Sql.uuid userId ]
+    |> Sql.executeRowAsync Sqls.readUserRow
