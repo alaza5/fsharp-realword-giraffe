@@ -6,4 +6,5 @@
     <include file="V2__create_articles_and_tags.sql" relativeToChangelogFile="true" />
     <include file="V3__create_comments.sql" relativeToChangelogFile="true" />
     <include file="V4__create_favorites.sql" relativeToChangelogFile="true" />
+    <include file="V5__create_follows.sql" relativeToChangelogFile="true" />
 </databaseChangeLog>
