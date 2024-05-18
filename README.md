@@ -28,3 +28,10 @@ Used libraries
 2. liquibase --changeLogFile=changelog.xml update
 3. dotnet run
 
+
+Things to do:
+- fix response mappers (currently all over the place)
+- add unit tests
+- add some logging
+- do some DI?
+- persist db connection? (DI?)
